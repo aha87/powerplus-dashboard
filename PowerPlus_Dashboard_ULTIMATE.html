@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerPlus Dashboard - Ultimate Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <style>
+        .metric-card { transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+        .filter-btn { transition: all 0.2s; cursor: pointer; }
+        .filter-btn.active { background: #6366f1; color: white; }
+        .badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-blue { background: #dbeafe; color: #1d4ed8; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-purple { background: #ede9fe; color: #5b21b6; }
+        
+        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; width: 120px; }
+        .progress-fill { height: 100%; background: linear-gradient(to right, #10b981, #34d399); transition: width 0.5s ease-in-out; }
+        
+        .trust-score { padding: 4px 12px; border-radius: 9999px; font-weight: 600; display: inline-block; }
+        .trust-1 { background: #fee2e2; color: #991b1b; }
+        .trust-2 { background: #fed7aa; color: #9a3412; }
+        .trust-3 { background: #fef3c7; color: #92400e; }
+        .trust-4 { background: #d1fae5; color: #065f46; }
+        .trust-5 { background: #a7f3d0; color: #064e3b; }
+        
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { background: #f3f4f6; }
+        .sort-arrow { display: inline-block; margin-left: 4px; opacity: 0.3; }
+        .sortable.asc .sort-arrow { opacity: 1; transform: rotate(0deg); }
+        .sortable.desc .sort-arrow { opacity: 1; transform: rotate(180deg); }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; padding: 1rem; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 1rem; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+        
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; margin-top: 0.5rem; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #6366f1; }
+        textarea { min-height: 80px; }
+        
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(99,102,241,0.3); }
+        .btn-secondary { background: #f3f4f6; color: #374151; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
+        .btn-secondary:hover { background: #e5e7eb; }
+        .btn-danger { background: #ef4444; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-edit { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; }
+        .btn-edit:hover { background: #2563eb; }
+        .btn-success { background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
+        .btn-success:hover { background: #059669; }
+        
+        .action-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        
+        .column-list { max-height: 300px; overflow-y: auto; }
+        .column-item { padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6 px-8 shadow-lg">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold">PowerPlus Dashboard</h1>
+                <p class="text-indigo-200 mt-1">German Market Director - Ultimate Edition</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-indigo-200">Last Update</p>
+                <p class="text-lg font-semibold" id="lastUpdate">-</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-8">
+            <div class="flex gap-1 overflow-x-auto py-2">
+                <button onclick="switchTab('overview')" id="tab-overview" class="filter-btn active px-6 py-3 rounded-lg font-semibold whitespace-nowrap">📊 Overview</button>
+                <button onclick="switchTab('pipeline')" id="tab-pipeline" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🎯 Pipeline</button>
+                <button onclick="switchTab('candidates')" id="tab-candidates" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">⭐ Candidates</button>
+                <button onclick="switchTab('employers')" id="tab-employers" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🤝 Employers</button>
+                <button onclick="switchTab('placements')" id="tab-placements" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">✅ Placements</button>
+                <button onclick="switchTab('risk')" id="tab-risk" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🛡️ Risk</button>
+                <button onclick="switchTab('market')" id="tab-market" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🗺️ Market</button>
+                <button onclick="switchTab('training')" id="tab-training" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">📚 Training</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-8 py-6">
+        
+        <!-- OVERVIEW TAB -->
+        <div id="content-overview" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Placements This Month</p>
+                            <p class="text-3xl font-bold text-indigo-600" id="metric-placements-month">0</p>
+                        </div>
+                        <div class="bg-indigo-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-sm">
+                        <span class="text-gray-600">Target: 10/month</span>
+                    </div>
+                    <div class="mt-3">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="metric-placements-bar" class="bg-indigo-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Active Pipeline</p>
+                            <p class="text-3xl font-bold text-blue-600" id="metric-pipeline">0</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Ready Candidates</p>
+                            <p class="text-3xl font-bold text-green-600" id="metric-candidates">0</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">High Risk Items</p>
+                            <p class="text-3xl font-bold text-red-600" id="metric-risk">0</p>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Placements Last 6 Months</h3>
+                    <canvas id="placementsMonthChart" height="250"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Pipeline by Stage</h3>
+                    <canvas id="pipelineChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Candidates by Status</h3>
+                    <canvas id="candidatesChart" height="250"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Branch Distribution</h3>
+                    <canvas id="branchChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- PIPELINE TAB -->
+        <div id="content-pipeline" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Sales Pipeline</h2>
+                    <div class="action-bar">
+                        <div class="flex gap-2">
+                            <button onclick="filterPipeline('all')" id="filter-pipeline-all" class="filter-btn active px-4 py-2 rounded-lg text-sm font-semibold">All</button>
+                            <button onclick="filterPipeline('Pflege')" id="filter-pipeline-Pflege" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Pflege</button>
+                            <button onclick="filterPipeline('Handwerk')" id="filter-pipeline-Handwerk" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Handwerk</button>
+                            <button onclick="filterPipeline('Gastro')" id="filter-pipeline-Gastro" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Gastro</button>
+                        </div>
+                        <button onclick="manageColumns('pipeline')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('pipeline')" class="btn-primary">+ Add Lead</button>
+                        <button onclick="bulkEditPipeline()" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDeletePipeline()" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="pipeline-table">
+                        <thead id="pipeline-thead"></thead>
+                        <tbody id="pipeline-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANDIDATES TAB -->
+        <div id="content-candidates" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Candidate Quality & Readiness</h2>
+                    <div class="action-bar">
+                        <div class="flex gap-2">
+                            <button onclick="filterCandidates('all')" id="filter-candidates-all" class="filter-btn active px-4 py-2 rounded-lg text-sm font-semibold">All</button>
+                            <button onclick="filterCandidates('Ready')" id="filter-candidates-Ready" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Ready</button>
+                            <button onclick="filterCandidates('Training')" id="filter-candidates-Training" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Training</button>
+                            <button onclick="filterCandidates('Screening')" id="filter-candidates-Screening" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Screening</button>
+                        </div>
+                        <button onclick="manageColumns('candidates')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('candidates')" class="btn-primary">+ Add Candidate</button>
+                        <button onclick="bulkEditCandidates()" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDeleteCandidates()" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="candidates-table">
+                        <thead id="candidates-thead"></thead>
+                        <tbody id="candidates-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- EMPLOYERS TAB -->
+        <div id="content-employers" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Employers</h2>
+                    <div class="action-bar">
+                        <button onclick="manageColumns('employers')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('employers')" class="btn-primary">+ Add Employer</button>
+                        <button onclick="bulkEditEmployers()" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDeleteEmployers()" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="employers-table">
+                        <thead id="employers-thead"></thead>
+                        <tbody id="employers-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLACEMENTS TAB -->
+        <div id="content-placements" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Placements</h2>
+                    <div class="action-bar">
+                        <button onclick="manageColumns('placements')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('placements')" class="btn-primary">+ Add Placement</button>
+                        <button onclick="bulkEditPlacements()" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDeletePlacements()" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="placements-table">
+                        <thead id="placements-thead"></thead>
+                        <tbody id="placements-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RISK TAB -->
+        <div id="content-risk" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Risk & Compliance</h2>
+                    <div class="action-bar">
+                        <button onclick="manageColumns('risk')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('risk')" class="btn-primary">+ Add Risk</button>
+                        <button onclick="bulkEditRisk()" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDeleteRisk()" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="risk-table">
+                        <thead id="risk-thead"></thead>
+                        <tbody id="risk-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- MARKET TAB -->
+        <div id="content-market" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Market Intelligence</h2>
+                    <div class="action-bar">
+                        <button onclick="manageColumns('market')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('market')" class="btn-primary">+ Add Market Data</button>
+                        <button onclick="bulkEditMarket()" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDeleteMarket()" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="market-table">
+                        <thead id="market-thead"></thead>
+                        <tbody id="market-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TRAINING TAB -->
+        <div id="content-training" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Training</h2>
+                    <div class="action-bar">
+                        <button onclick="manageColumns('training')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('training')" class="btn-primary">+ Add Training</button>
+                        <button onclick="bulkEditTraining()" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDeleteTraining()" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="training-table">
+                        <thead id="training-thead"></thead>
+                        <tbody id="training-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Column Management Modal -->
+    <div id="column-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Manage Columns</h2>
+            <p class="text-sm text-gray-600 mb-4">Add or remove columns for <span id="column-collection-name"></span></p>
+            
+            <div class="mb-4">
+                <h3 class="font-semibold mb-2">Add New Column</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="new-column-name" placeholder="Column Name" class="flex-1">
+                    <button onclick="addColumn()" class="btn-primary">Add</button>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h3 class="font-semibold mb-2">Current Columns</h3>
+                <div id="column-list" class="column-list"></div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeColumnModal()" class="btn-secondary flex-1">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit/Add Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title" class="text-2xl font-bold mb-4">Edit Item</h2>
+            <form id="edit-form" onsubmit="saveItem(event)"></form>
+            <div class="flex gap-3 mt-6">
+                <button type="submit" form="edit-form" class="btn-primary flex-1">Save</button>
+                <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyA1WKOUlVF1YvBMolSVACHOXz2kGQ_a6Sc",
+          authDomain: "powerplus-dashboard.firebaseapp.com",
+          projectId: "powerplus-dashboard",
+          storageBucket: "powerplus-dashboard.firebasestorage.app",
+          messagingSenderId: "506858654374",
+          appId: "1:506858654374:web:06e47ff0cd5f8ae7808267",
+          measurementId: "G-H1BJQBB3KP"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let currentCollection = '';
+        let currentDocId = '';
+        let allData = {};
+        let sortStates = {};
+        let filterStates = { pipeline: 'all', candidates: 'all' };
+        let selectedItems = { pipeline: [], candidates: [], employers: [], placements: [], risk: [], market: [], training: [] };
+        let chartsInitialized = false;
+        let charts = {};
+        
+        // Column configuration - stored in localStorage
+        let columnConfig = {
+            pipeline: ['Company', 'Branch', 'Region', 'Stage', 'Priority', 'Azubi Bedarf', 'Phone', 'Last Contacted'],
+            candidates: ['Name', 'Branch', 'German Level', 'Overall Score', 'Status', 'Training Progress'],
+            employers: ['Company', 'Branch', 'Trust Score', 'Phone', 'Current PowerPlus Workers', 'Notes'],
+            placements: ['Candidate', 'Company', 'Branch', 'Start Date', 'End Date', 'Status'],
+            risk: ['Item', 'Type', 'Risk Level', 'Status'],
+            market: ['Branch', 'Vacancy Rate', 'Regional Demand', 'Priority Score'],
+            training: ['Module', 'Type', 'Duration', 'Status']
+        };
+
+        // Load column config from localStorage
+        const savedConfig = localStorage.getItem('columnConfig');
+        if (savedConfig) {
+            columnConfig = JSON.parse(savedConfig);
+        }
+
+        // Save column config to localStorage
+        function saveColumnConfig() {
+            localStorage.setItem('columnConfig', JSON.stringify(columnConfig));
+        }
+
+        // Load all collections
+        function loadAllCollections() {
+            ['pipeline', 'candidates', 'employers', 'placements', 'risk', 'market', 'training'].forEach(coll => {
+                db.collection(coll).onSnapshot(snapshot => {
+                    allData[coll] = [];
+                    snapshot.forEach(doc => {
+                        allData[coll].push({ id: doc.id, ...doc.data() });
+                    });
+                    renderTable(coll);
+                    updateMetrics();
+                    if (!chartsInitialized) {
+                        updateCharts();
+                        chartsInitialized = true;
+                    }
+                });
+            });
+            
+            setInterval(() => {
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString('de-DE');
+            }, 1000);
+        }
+
+        // Update metrics
+        function updateMetrics() {
+            // Placements this month
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            const placementsThisMonth = (allData.placements || []).filter(p => {
+                if (!p['Start Date']) return false;
+                const startDate = new Date(p['Start Date']);
+                return startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear;
+            }).length;
+            
+            document.getElementById('metric-placements-month').textContent = placementsThisMonth;
+            const percentage = Math.min((placementsThisMonth / 10) * 100, 100);
+            document.getElementById('metric-placements-bar').style.width = percentage + '%';
+            
+            // Other metrics
+            document.getElementById('metric-pipeline').textContent = (allData.pipeline || []).length;
+            document.getElementById('metric-candidates').textContent = (allData.candidates || []).filter(c => c.Status === 'Ready').length;
+            document.getElementById('metric-risk').textContent = (allData.risk || []).filter(r => r['Risk Level'] === 'High').length;
+        }
+
+        // Update charts
+        function updateCharts() {
+            // Placements last 6 months
+            const months = [];
+            const placementCounts = [];
+            for (let i = 5; i >= 0; i--) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                const monthName = date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
+                months.push(monthName);
+                
+                const count = (allData.placements || []).filter(p => {
+                    if (!p['Start Date']) return false;
+                    const startDate = new Date(p['Start Date']);
+                    return startDate.getMonth() === date.getMonth() && startDate.getFullYear() === date.getFullYear();
+                }).length;
+                placementCounts.push(count);
+            }
+
+            if (charts.placementsMonth) charts.placementsMonth.destroy();
+            const ctxPlacementsMonth = document.getElementById('placementsMonthChart').getContext('2d');
+            charts.placementsMonth = new Chart(ctxPlacementsMonth, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Placements',
+                        data: placementCounts,
+                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                        borderColor: '#6366f1',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+
+            // Pipeline by stage
+            const stages = {};
+            (allData.pipeline || []).forEach(p => {
+                const stage = p.Stage || 'Unknown';
+                stages[stage] = (stages[stage] || 0) + 1;
+            });
+
+            if (charts.pipeline) charts.pipeline.destroy();
+            const ctxPipeline = document.getElementById('pipelineChart').getContext('2d');
+            charts.pipeline = new Chart(ctxPipeline, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(stages),
+                    datasets: [{ data: Object.values(stages), backgroundColor: ['#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#10b981'] }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Candidates by status
+            const statuses = {};
+            (allData.candidates || []).forEach(c => {
+                const status = c.Status || 'Unknown';
+                statuses[status] = (statuses[status] || 0) + 1;
+            });
+
+            if (charts.candidates) charts.candidates.destroy();
+            const ctxCandidates = document.getElementById('candidatesChart').getContext('2d');
+            charts.candidates = new Chart(ctxCandidates, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statuses),
+                    datasets: [{ data: Object.values(statuses), backgroundColor: ['#10b981', '#f59e0b', '#3b82f6'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Branch distribution
+            const branches = {};
+            (allData.pipeline || []).forEach(p => {
+                const branch = p.Branch || 'Unknown';
+                branches[branch] = (branches[branch] || 0) + 1;
+            });
+
+            if (charts.branch) charts.branch.destroy();
+            const ctxBranch = document.getElementById('branchChart').getContext('2d');
+            charts.branch = new Chart(ctxBranch, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(branches),
+                    datasets: [{ data: Object.values(branches), backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // Render table with dynamic columns
+        function renderTable(collection) {
+            const thead = document.getElementById(collection + '-thead');
+            const tbody = document.getElementById(collection + '-tbody');
+            if (!thead || !tbody) return;
+            
+            const columns = columnConfig[collection] || [];
+            let data = allData[collection] || [];
+            
+            // Apply filter
+            if (filterStates[collection] && filterStates[collection] !== 'all') {
+                if (collection === 'pipeline') {
+                    data = data.filter(item => item.Branch === filterStates[collection]);
+                } else if (collection === 'candidates') {
+                    data = data.filter(item => item.Status === filterStates[collection]);
+                }
+            }
+            
+            // Apply sorting
+            if (sortStates[collection]) {
+                const { field, direction } = sortStates[collection];
+                data = [...data].sort((a, b) => {
+                    let aVal = a[field] || '';
+                    let bVal = b[field] || '';
+                    
+                    const aNum = parseFloat(aVal);
+                    const bNum = parseFloat(bVal);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return direction === 'asc' ? aNum - bNum : bNum - aNum;
+                    }
+                    
+                    aVal = String(aVal).toLowerCase();
+                    bVal = String(bVal).toLowerCase();
+                    return direction === 'asc' ? 
+                        (aVal < bVal ? -1 : aVal > bVal ? 1 : 0) :
+                        (aVal > bVal ? -1 : aVal < bVal ? 1 : 0);
+                });
+            }
+            
+            // Render header
+            thead.innerHTML = `<tr class="bg-gray-50 text-left">
+                <th class="px-4 py-3"><input type="checkbox" id="select-all-${collection}" onchange="selectAll${collection.charAt(0).toUpperCase() + collection.slice(1)}(this.checked)"></th>
+                ${columns.map(col => `<th class="px-4 py-3 text-sm font-semibold text-gray-700 sortable" onclick="sortTable('${collection}', '${col}')">${col} <span class="sort-arrow">▼</span></th>`).join('')}
+            </tr>`;
+            
+            // Render body
+            tbody.innerHTML = data.map(item => {
+                const isSelected = selectedItems[collection].includes(item.id);
+                let rowHTML = `<tr class="border-t hover:bg-gray-50" onclick="toggleRowSelection(event, '${collection}', '${item.id}')">
+                    <td class="px-4 py-3"><input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${collection}', '${item.id}')"></td>`;
+                
+                columns.forEach(col => {
+                    let value = item[col] || '-';
+                    
+                    // Special rendering for certain columns
+                    if (col === 'Status' && collection === 'candidates') {
+                        const statusClass = value === 'Ready' ? 'green' : value === 'Training' ? 'yellow' : 'blue';
+                        value = `<span class="badge badge-${statusClass}">${value}</span>`;
+                    } else if (col === 'Training Progress') {
+                        const progress = parseInt((value || '0').replace('%', '')) || 0;
+                        value = `<div><div class="progress-bar"><div class="progress-fill" style="width: ${progress}%"></div></div><span class="text-xs text-gray-600">${progress}%</span></div>`;
+                    } else if (col === 'Trust Score' && collection === 'employers') {
+                        const score = parseFloat(value) || 0;
+                        const scoreClass = score >= 4.5 ? 'trust-5' : score >= 3.5 ? 'trust-4' : score >= 2.5 ? 'trust-3' : score >= 1.5 ? 'trust-2' : 'trust-1';
+                        value = `<span class="trust-score ${scoreClass}">${score.toFixed(1)}</span>`;
+                    } else if (col === 'Overall Score') {
+                        value = `<span class="badge badge-green">${value}</span>`;
+                    } else if (col === 'Stage' || col === 'Priority' || col === 'Risk Level') {
+                        const badgeClass = col === 'Risk Level' ? (value === 'High' ? 'red' : value === 'Medium' ? 'yellow' : 'green') : 'blue';
+                        value = `<span class="badge badge-${badgeClass}">${value}</span>`;
+                    } else if (col === 'Notes') {
+                        value = `<span style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; display: block;" title="${value}">${value}</span>`;
+                    }
+                    
+                    rowHTML += `<td class="px-4 py-3 text-sm">${value}</td>`;
+                });
+                
+                rowHTML += '</tr>';
+                return rowHTML;
+            }).join('') || `<tr><td colspan="${columns.length + 1}" class="px-4 py-8 text-center text-gray-500">No data</td></tr>`;
+        }
+
+        // Column management
+        let currentColumnCollection = '';
+        
+        function manageColumns(collection) {
+            currentColumnCollection = collection;
+            document.getElementById('column-collection-name').textContent = collection;
+            
+            const columnList = document.getElementById('column-list');
+            const columns = columnConfig[collection] || [];
+            
+            columnList.innerHTML = columns.map(col => `
+                <div class="column-item">
+                    <span>${col}</span>
+                    <button onclick="removeColumn('${col}')" class="text-red-600 hover:text-red-800">Remove</button>
+                </div>
+            `).join('');
+            
+            document.getElementById('column-modal').classList.add('active');
+        }
+        
+        function addColumn() {
+            const newColumnName = document.getElementById('new-column-name').value.trim();
+            if (!newColumnName) {
+                alert('Please enter a column name');
+                return;
+            }
+            
+            if (!columnConfig[currentColumnCollection]) {
+                columnConfig[currentColumnCollection] = [];
+            }
+            
+            if (columnConfig[currentColumnCollection].includes(newColumnName)) {
+                alert('Column already exists');
+                return;
+            }
+            
+            columnConfig[currentColumnCollection].push(newColumnName);
+            saveColumnConfig();
+            manageColumns(currentColumnCollection);
+            renderTable(currentColumnCollection);
+            document.getElementById('new-column-name').value = '';
+        }
+        
+        function removeColumn(columnName) {
+            if (!confirm(`Remove column "${columnName}"?`)) return;
+            
+            columnConfig[currentColumnCollection] = columnConfig[currentColumnCollection].filter(c => c !== columnName);
+            saveColumnConfig();
+            manageColumns(currentColumnCollection);
+            renderTable(currentColumnCollection);
+        }
+        
+        function closeColumnModal() {
+            document.getElementById('column-modal').classList.remove('active');
+        }
+
+        // Filter functions
+        function filterPipeline(branch) {
+            filterStates.pipeline = branch;
+            document.querySelectorAll('[id^="filter-pipeline-"]').forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-100');
+            });
+            document.getElementById('filter-pipeline-' + branch).classList.add('active', 'bg-indigo-600', 'text-white');
+            document.getElementById('filter-pipeline-' + branch).classList.remove('bg-gray-100');
+            renderTable('pipeline');
+        }
+
+        function filterCandidates(status) {
+            filterStates.candidates = status;
+            document.querySelectorAll('[id^="filter-candidates-"]').forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-100');
+            });
+            document.getElementById('filter-candidates-' + status).classList.add('active', 'bg-indigo-600', 'text-white');
+            document.getElementById('filter-candidates-' + status).classList.remove('bg-gray-100');
+            renderTable('candidates');
+        }
+
+        // Sort table
+        function sortTable(collection, field) {
+            if (!sortStates[collection]) {
+                sortStates[collection] = { field, direction: 'asc' };
+            } else if (sortStates[collection].field === field) {
+                sortStates[collection].direction = sortStates[collection].direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortStates[collection] = { field, direction: 'asc' };
+            }
+            
+            document.querySelectorAll(`#content-${collection} th.sortable`).forEach(th => {
+                th.classList.remove('asc', 'desc');
+            });
+            const clickedTh = event.target.closest('th');
+            clickedTh.classList.add(sortStates[collection].direction);
+            
+            renderTable(collection);
+        }
+
+        // Selection functions
+        function toggleItemSelection(collection, id) {
+            const idx = selectedItems[collection].indexOf(id);
+            if (idx > -1) selectedItems[collection].splice(idx, 1);
+            else selectedItems[collection].push(id);
+            renderTable(collection);
+        }
+
+        function toggleRowSelection(event, collection, id) {
+            if (event.target.type === 'checkbox') return;
+            toggleItemSelection(collection, id);
+        }
+
+        function selectAllPipeline(checked) { selectedItems.pipeline = checked ? allData.pipeline.map(i => i.id) : []; renderTable('pipeline'); }
+        function selectAllCandidates(checked) { selectedItems.candidates = checked ? allData.candidates.map(i => i.id) : []; renderTable('candidates'); }
+        function selectAllEmployers(checked) { selectedItems.employers = checked ? allData.employers.map(i => i.id) : []; renderTable('employers'); }
+        function selectAllPlacements(checked) { selectedItems.placements = checked ? allData.placements.map(i => i.id) : []; renderTable('placements'); }
+        function selectAllRisk(checked) { selectedItems.risk = checked ? allData.risk.map(i => i.id) : []; renderTable('risk'); }
+        function selectAllMarket(checked) { selectedItems.market = checked ? allData.market.map(i => i.id) : []; renderTable('market'); }
+        function selectAllTraining(checked) { selectedItems.training = checked ? allData.training.map(i => i.id) : []; renderTable('training'); }
+
+        // Bulk operations
+        function bulkEditPipeline() { if (selectedItems.pipeline.length === 1) editItem('pipeline', selectedItems.pipeline[0]); else alert(selectedItems.pipeline.length > 1 ? 'Select only one item' : 'Select an item'); }
+        function bulkEditCandidates() { if (selectedItems.candidates.length === 1) editItem('candidates', selectedItems.candidates[0]); else alert(selectedItems.candidates.length > 1 ? 'Select only one item' : 'Select an item'); }
+        function bulkEditEmployers() { if (selectedItems.employers.length === 1) editItem('employers', selectedItems.employers[0]); else alert(selectedItems.employers.length > 1 ? 'Select only one item' : 'Select an item'); }
+        function bulkEditPlacements() { if (selectedItems.placements.length === 1) editItem('placements', selectedItems.placements[0]); else alert(selectedItems.placements.length > 1 ? 'Select only one item' : 'Select an item'); }
+        function bulkEditRisk() { if (selectedItems.risk.length === 1) editItem('risk', selectedItems.risk[0]); else alert(selectedItems.risk.length > 1 ? 'Select only one item' : 'Select an item'); }
+        function bulkEditMarket() { if (selectedItems.market.length === 1) editItem('market', selectedItems.market[0]); else alert(selectedItems.market.length > 1 ? 'Select only one item' : 'Select an item'); }
+        function bulkEditTraining() { if (selectedItems.training.length === 1) editItem('training', selectedItems.training[0]); else alert(selectedItems.training.length > 1 ? 'Select only one item' : 'Select an item'); }
+
+        async function bulkDeletePipeline() { if (selectedItems.pipeline.length === 0) { alert('Select items'); return; } if (!confirm(`Delete ${selectedItems.pipeline.length} items?`)) return; for (const id of selectedItems.pipeline) await db.collection('pipeline').doc(id).delete(); selectedItems.pipeline = []; }
+        async function bulkDeleteCandidates() { if (selectedItems.candidates.length === 0) { alert('Select items'); return; } if (!confirm(`Delete ${selectedItems.candidates.length} items?`)) return; for (const id of selectedItems.candidates) await db.collection('candidates').doc(id).delete(); selectedItems.candidates = []; }
+        async function bulkDeleteEmployers() { if (selectedItems.employers.length === 0) { alert('Select items'); return; } if (!confirm(`Delete ${selectedItems.employers.length} items?`)) return; for (const id of selectedItems.employers) await db.collection('employers').doc(id).delete(); selectedItems.employers = []; }
+        async function bulkDeletePlacements() { if (selectedItems.placements.length === 0) { alert('Select items'); return; } if (!confirm(`Delete ${selectedItems.placements.length} items?`)) return; for (const id of selectedItems.placements) await db.collection('placements').doc(id).delete(); selectedItems.placements = []; }
+        async function bulkDeleteRisk() { if (selectedItems.risk.length === 0) { alert('Select items'); return; } if (!confirm(`Delete ${selectedItems.risk.length} items?`)) return; for (const id of selectedItems.risk) await db.collection('risk').doc(id).delete(); selectedItems.risk = []; }
+        async function bulkDeleteMarket() { if (selectedItems.market.length === 0) { alert('Select items'); return; } if (!confirm(`Delete ${selectedItems.market.length} items?`)) return; for (const id of selectedItems.market) await db.collection('market').doc(id).delete(); selectedItems.market = []; }
+        async function bulkDeleteTraining() { if (selectedItems.training.length === 0) { alert('Select items'); return; } if (!confirm(`Delete ${selectedItems.training.length} items?`)) return; for (const id of selectedItems.training) await db.collection('training').doc(id).delete(); selectedItems.training = []; }
+
+        // Modal functions
+        function openAddModal(collection) {
+            currentCollection = collection;
+            currentDocId = '';
+            document.getElementById('modal-title').textContent = `Add ${collection.charAt(0).toUpperCase() + collection.slice(1)}`;
+            
+            const columns = columnConfig[collection] || [];
+            const form = document.getElementById('edit-form');
+            form.innerHTML = columns.map(col => `
+                <label class="block mt-4">
+                    <span class="text-sm font-semibold text-gray-700">${col}</span>
+                    <input type="text" name="${col}" placeholder="${col}">
+                </label>
+            `).join('');
+            
+            document.getElementById('edit-modal').classList.add('active');
+        }
+
+        function editItem(collection, docId) {
+            currentCollection = collection;
+            currentDocId = docId;
+            document.getElementById('modal-title').textContent = `Edit ${collection.charAt(0).toUpperCase() + collection.slice(1)}`;
+            
+            const item = allData[collection].find(i => i.id === docId);
+            if (!item) return;
+            
+            const columns = columnConfig[collection] || [];
+            const form = document.getElementById('edit-form');
+            form.innerHTML = columns.map(col => {
+                const value = item[col] || '';
+                return `
+                    <label class="block mt-4">
+                        <span class="text-sm font-semibold text-gray-700">${col}</span>
+                        <input type="text" name="${col}" value="${value}" placeholder="${col}">
+                    </label>
+                `;
+            }).join('');
+            
+            document.getElementById('edit-modal').classList.add('active');
+        }
+
+        async function saveItem(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            formData.forEach((value, key) => data[key] = value);
+            
+            try {
+                if (currentDocId) {
+                    await db.collection(currentCollection).doc(currentDocId).update(data);
+                } else {
+                    await db.collection(currentCollection).add(data);
+                }
+                closeModal();
+                selectedItems[currentCollection] = [];
+            } catch (error) {
+                alert('Error saving: ' + error.message);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-100');
+            });
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+            const activeBtn = document.getElementById('tab-' + tabName);
+            activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+            activeBtn.classList.remove('bg-gray-100');
+        }
+
+        // Initialize
+        window.onload = () => {
+            loadAllCollections();
+            switchTab('overview');
+        };
+    </script>
+</body>
+</html>
