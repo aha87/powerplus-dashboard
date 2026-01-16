@@ -1,164 +1,281 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PowerPlus Dashboard - Ultimate Edition</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <style>
-        .metric-card { transition: all 0.3s ease; }
-        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
-        .filter-btn { transition: all 0.2s; cursor: pointer; }
-        .filter-btn.active { background: #6366f1; color: white; }
-        .badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
-        .badge-green { background: #d1fae5; color: #065f46; }
-        .badge-yellow { background: #fef3c7; color: #92400e; }
-        .badge-blue { background: #dbeafe; color: #1d4ed8; }
-        .badge-red { background: #fee2e2; color: #991b1b; }
-        .badge-purple { background: #ede9fe; color: #5b21b6; }
-        
-        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; width: 120px; }
-        .progress-fill { height: 100%; background: linear-gradient(to right, #10b981, #34d399); transition: width 0.5s ease-in-out; }
-        
-        .trust-score { padding: 4px 12px; border-radius: 9999px; font-weight: 600; display: inline-block; }
-        .trust-1 { background: #fee2e2; color: #991b1b; }
-        .trust-2 { background: #fed7aa; color: #9a3412; }
-        .trust-3 { background: #fef3c7; color: #92400e; }
-        .trust-4 { background: #d1fae5; color: #065f46; }
-        .trust-5 { background: #a7f3d0; color: #064e3b; }
-        
-        .sortable { cursor: grab; user-select: none; }
-        .sortable:hover { background: #f3f4f6; }
-        
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; padding: 1rem; }
-        .modal.active { display: flex; }
-        .modal-content { background: white; border-radius: 1rem; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
-        
-        input, select, textarea { width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; margin-top: 0.5rem; }
-        input:focus, select:focus, textarea:focus { outline: none; border-color: #6366f1; }
-        textarea { min-height: 80px; }
-        
-        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(99,102,241,0.3); }
-        .btn-secondary { background: #f3f4f6; color: #374151; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
-        .btn-secondary:hover { background: #e5e7eb; }
-        .btn-danger { background: #ef4444; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
-        .btn-danger:hover { background: #dc2626; }
-        .btn-edit { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; }
-        .btn-edit:hover { background: #2563eb; }
-        .btn-success { background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
-        .btn-success:hover { background: #059669; }
-        
-        .action-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        
-        .column-list { max-height: 300px; overflow-y: auto; }
-        .column-item { padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; cursor: grab; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PowerPlus Dashboard ULTIMATE</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  /* Cards & Metrics */
+  .metric-card { transition: all 0.3s ease; }
+  .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+  .status-dot { width:12px; height:12px; border-radius:50%; display:inline-block; margin-right:8px; }
+  .stage-Prospect { background:#3b82f6; }
+  .stage-Contacted { background:#f59e0b; }
+  .stage-Qualified { background:#6366f1; }
+  .stage-Meeting { background:#10b981; }
+  .stage-Proposal { background:#8b5cf6; }
+  .stage-Negotiation { background:#f43f5e; }
+  .stage-Deal { background:#14b8a6; }
+  .filter-btn { transition: all 0.2s; }
+  .filter-btn.active { background: #6366f1; color:white; }
+  table th, table td { padding:0.5rem 0.75rem; text-align:left; }
+  table th { background:#f9fafb; font-weight:600; }
+  table td { border-bottom:1px solid #e5e7eb; }
+</style>
 </head>
 <body class="bg-gray-50">
 
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6 px-8 shadow-lg">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold">PowerPlus Dashboard</h1>
-                <p class="text-indigo-200 mt-1">German Market Director - Ultimate Edition</p>
-            </div>
-            <div class="text-right">
-                <p class="text-sm text-indigo-200">Last Update</p>
-                <p class="text-lg font-semibold" id="lastUpdate">-</p>
-            </div>
+<!-- HEADER -->
+<div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6 px-8 shadow-lg">
+  <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold">German Market Director Dashboard</h1>
+      <p class="text-indigo-200 mt-1">PowerPlus Education - Real-time Market Intelligence</p>
+    </div>
+    <div class="text-right">
+      <p class="text-sm text-indigo-200">Last Update</p>
+      <p class="text-lg font-semibold" id="lastUpdate">Lädt...</p>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="bg-white shadow-md sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-8">
+    <div class="flex gap-1 overflow-x-auto py-2">
+      <button onclick="switchTab('overview')" id="tab-overview" class="filter-btn active px-6 py-3 rounded-lg font-semibold whitespace-nowrap">📊 Overview</button>
+      <button onclick="switchTab('pipeline')" id="tab-pipeline" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 whitespace-nowrap">🎯 Pipeline</button>
+      <button onclick="switchTab('candidates')" id="tab-candidates" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 whitespace-nowrap">⭐ Candidates</button>
+      <button onclick="switchTab('employers')" id="tab-employers" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 whitespace-nowrap">🤝 Employers</button>
+      <button onclick="switchTab('placements')" id="tab-placements" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 whitespace-nowrap">✅ Placements</button>
+      <button onclick="switchTab('risk')" id="tab-risk" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 whitespace-nowrap">🛡️ Risk</button>
+      <button onclick="switchTab('market')" id="tab-market" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 whitespace-nowrap">🗺️ Market</button>
+      <button onclick="switchTab('training')" id="tab-training" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 whitespace-nowrap">🎓 Training</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="max-w-7xl mx-auto px-8 py-6">
+
+  <!-- OVERVIEW -->
+  <div id="content-overview" class="tab-content">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+        <p class="text-sm text-gray-600">Placements This Month</p>
+        <p class="text-3xl font-bold text-indigo-600" id="metric-placements">0</p>
+        <div class="w-full bg-gray-200 rounded-full h-2 mt-3">
+          <div id="metric-placements-bar" class="bg-indigo-600 h-2 rounded-full" style="width:0%"></div>
         </div>
+        <p class="text-xs text-gray-500 mt-1">Target: <span id="metric-placements-target">10</span> | <span id="metric-placements-percent">0%</span></p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+        <p class="text-sm text-gray-600">Active Pipeline</p>
+        <p class="text-3xl font-bold text-blue-600" id="metric-pipeline">0</p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+        <p class="text-sm text-gray-600">Ready Candidates</p>
+        <p class="text-3xl font-bold text-green-600" id="metric-ready-candidates">0</p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+        <p class="text-sm text-gray-600">Avg Trust Score</p>
+        <p class="text-3xl font-bold text-purple-600" id="metric-trust-score">0.0</p>
+      </div>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="bg-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-8">
-            <div class="flex gap-1 overflow-x-auto py-2">
-                <button onclick="switchTab('overview')" id="tab-overview" class="filter-btn active px-6 py-3 rounded-lg font-semibold whitespace-nowrap">📊 Overview</button>
-                <button onclick="switchTab('pipeline')" id="tab-pipeline" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🎯 Pipeline</button>
-                <button onclick="switchTab('candidates')" id="tab-candidates" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">⭐ Candidates</button>
-                <button onclick="switchTab('employers')" id="tab-employers" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🤝 Employers</button>
-                <button onclick="switchTab('placements')" id="tab-placements" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">✅ Placements</button>
-                <button onclick="switchTab('risk')" id="tab-risk" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🛡️ Risk</button>
-                <button onclick="switchTab('market')" id="tab-market" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🗺️ Market</button>
-                <button onclick="switchTab('training')" id="tab-training" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">📚 Training</button>
-            </div>
-        </div>
+    <!-- Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <p class="font-semibold mb-2">Pipeline Funnel</p>
+        <canvas id="chart-funnel"></canvas>
+      </div>
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <p class="font-semibold mb-2">Placements Trend</p>
+        <canvas id="chart-trend"></canvas>
+      </div>
     </div>
+  </div>
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-8 py-6">
-        <!-- CONTENT TABS HERE ... (unverändert zu vorher) -->
+  <!-- PIPELINE TAB -->
+  <div id="content-pipeline" class="tab-content hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white rounded-xl shadow-lg">
+        <thead><tr class="bg-gray-50"><th>Company</th><th>Branch</th><th>Region</th><th>Stage</th><th>Priority</th><th>Next Action</th><th>Contact</th></tr></thead>
+        <tbody id="pipeline-tbody"><tr><td colspan="7" class="text-center py-8 text-gray-500">Loading pipeline data...</td></tr></tbody>
+      </table>
     </div>
+  </div>
 
-    <!-- Column Management Modal -->
-    <div id="column-modal" class="modal">
-        <div class="modal-content">
-            <h2 class="text-2xl font-bold mb-4">Manage Columns</h2>
-            <p class="text-sm text-gray-600 mb-4">Add, remove, or reorder columns for <span id="column-collection-name"></span></p>
-            <div class="mb-4">
-                <h3 class="font-semibold mb-2">Add New Column</h3>
-                <div class="flex gap-2">
-                    <input type="text" id="new-column-name" placeholder="Column Name" class="flex-1">
-                    <button onclick="addColumn()" class="btn-primary">Add</button>
-                </div>
-            </div>
-            <div class="mb-4">
-                <h3 class="font-semibold mb-2">Current Columns (drag to reorder)</h3>
-                <div id="column-list" class="column-list"></div>
-            </div>
-            <div class="flex gap-3 mt-6">
-                <button onclick="closeColumnModal()" class="btn-secondary flex-1">Close</button>
-            </div>
-        </div>
+  <!-- CANDIDATES TAB -->
+  <div id="content-candidates" class="tab-content hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white rounded-xl shadow-lg">
+        <thead><tr class="bg-gray-50"><th>Name</th><th>Branch</th><th>German Level</th><th>Quality Score</th><th>Status</th><th>Training Progress</th><th>Last Contact</th></tr></thead>
+        <tbody id="candidates-tbody"><tr><td colspan="7" class="text-center py-8 text-gray-500">Loading candidate data...</td></tr></tbody>
+      </table>
     </div>
+  </div>
 
-    <!-- Edit/Add Modal -->
-    <div id="edit-modal" class="modal">
-        <div class="modal-content">
-            <h2 id="modal-title" class="text-2xl font-bold mb-4">Edit Item</h2>
-            <form id="edit-form" onsubmit="saveItem(event)"></form>
-            <div class="flex gap-3 mt-6">
-                <button type="submit" form="edit-form" class="btn-primary flex-1">Save</button>
-                <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-            </div>
-        </div>
+  <!-- EMPLOYERS TAB -->
+  <div id="content-employers" class="tab-content hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white rounded-xl shadow-lg">
+        <thead><tr class="bg-gray-50"><th>Company</th><th>Engagement</th><th>Trust Score</th><th>Active Placements</th><th>Feedback</th><th>Last Contact</th><th>Notes</th></tr></thead>
+        <tbody id="employers-tbody"><tr><td colspan="7" class="text-center py-8 text-gray-500">Loading employer data...</td></tr></tbody>
+      </table>
     </div>
+  </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyA1WKOUlVF1YvBMolSVACHOXz2kGQ_a6Sc",
-            authDomain: "powerplus-dashboard.firebaseapp.com",
-            projectId: "powerplus-dashboard",
-            storageBucket: "powerplus-dashboard.firebasestorage.app",
-            messagingSenderId: "506858654374",
-            appId: "1:506858654374:web:06e47ff0cd5f8ae7808267",
-            measurementId: "G-H1BJQBB3KP"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        let currentCollection = '', currentDocId = '';
-        let allData = {}, selectedItems = { pipeline: [], candidates: [], employers: [], placements: [], risk: [], market: [], training: [] };
-        let columnConfig = JSON.parse(localStorage.getItem('columnConfig') || JSON.stringify({
-            pipeline: ['Company','Branch','Region','Stage','Priority','Azubi Bedarf','Phone','Last Contacted'],
-            candidates: ['Name','Branch','German Level','Overall Score','Status','Training Progress'],
-            employers: ['Company','Branch','Trust Score','Phone','Current PowerPlus Workers','Notes'],
-            placements: ['Candidate','Company','Branch','Start Date','End Date','Status'],
-            risk: ['Item','Type','Risk Level','Status'],
-            market: ['Branch','Vacancy Rate','Regional Demand','Priority Score'],
-            training: ['Module','Type','Duration','Status']
-        }));
+  <!-- PLACEMENTS TAB -->
+  <div id="content-placements" class="tab-content hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white rounded-xl shadow-lg">
+        <thead><tr class="bg-gray-50"><th>Candidate</th><th>Company</th><th>Branch</th><th>Start Date</th><th>Status</th><th>Feedback</th></tr></thead>
+        <tbody id="placements-tbody"><tr><td colspan="6" class="text-center py-8 text-gray-500">Loading placement data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 
-        function saveColumnConfig(){localStorage.setItem('columnConfig',JSON.stringify(columnConfig));}
-        function openModal(){document.getElementById('edit-modal').classList.add('active');}
-        function closeModal(){document.getElementById('edit-modal').classList.remove('active');}
-        function closeColumnModal(){document.getElementById('column-modal').classList.remove('active');}
-        function switchTab(tab){document.querySelectorAll('.tab-content').forEach(c=>c.classList.add('hidden'));document.getElementById('content-'+tab).classList.remove('hidden');document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+tab).classList.add('active');}
-    </script>
-    <script src="dashboard_logic.js"></script>
+  <!-- RISK TAB -->
+  <div id="content-risk" class="tab-content hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white rounded-xl shadow-lg">
+        <thead><tr class="bg-gray-50"><th>Item</th><th>Type</th><th>Risk Level</th><th>Due Date</th><th>Status</th><th>Action Required</th></tr></thead>
+        <tbody id="risk-tbody"><tr><td colspan="6" class="text-center py-8 text-gray-500">Loading risk data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MARKET TAB -->
+  <div id="content-market" class="tab-content hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white rounded-xl shadow-lg">
+        <thead><tr class="bg-gray-50"><th>Market Segment</th><th>Opportunity</th><th>Notes</th></tr></thead>
+        <tbody id="market-tbody"><tr><td colspan="3" class="text-center py-8 text-gray-500">Loading market data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TRAINING TAB -->
+  <div id="content-training" class="tab-content hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white rounded-xl shadow-lg">
+        <thead><tr class="bg-gray-50"><th>Candidate</th><th>Module</th><th>Status</th><th>Progress</th></tr></thead>
+        <tbody id="training-tbody"><tr><td colspan="4" class="text-center py-8 text-gray-500">Loading training data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* TAB SWITCHING */
+function switchTab(tabName){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.add('hidden'));
+  document.querySelectorAll('[id^="tab-"]').forEach(btn=>btn.classList.remove('active','bg-indigo-600','text-white'));
+  document.getElementById('content-'+tabName).classList.remove('hidden');
+  const b=document.getElementById('tab-'+tabName);
+  b.classList.add('active','bg-indigo-600','text-white');
+}
+
+/* CSV PARSER */
+function parseCSV(text){
+  const lines=text.trim().split('\n');
+  const headers=lines[0].split(',');
+  return lines.slice(1).map(l=>{
+    const values=l.split(',');
+    const obj={};
+    headers.forEach((h,i)=>obj[h.trim()]=values[i]?values[i].trim():'');
+    return obj;
+  });
+}
+
+/* LOAD CSV INTO TABLE */
+async function loadCSV(name,tbodyId,metricId=null,metricBarId=null,target=null){
+  try{
+    const res=await fetch(name+'.csv');
+    const text=await res.text();
+    const data=parseCSV(text);
+    const tbody=document.getElementById(tbodyId);
+    tbody.innerHTML='';
+    data.forEach(row=>{
+      const tr=document.createElement('tr');
+      Object.entries(row).forEach(([key,value])=>{
+        const td=document.createElement('td');
+        td.textContent=value;
+        if(key==='Stage' && name==='Pipeline'){
+          const span=document.createElement('span');
+          span.classList.add('status-dot','stage-'+value.replace(/\s+/g,''));
+          td.innerHTML='';
+          td.appendChild(span);
+          td.append(' '+value);
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    if(metricId){
+      document.getElementById(metricId).textContent=data.length;
+      if(metricBarId && target){
+        const percent=Math.round((data.length/target)*100);
+        document.getElementById(metricBarId).style.width=percent+'%';
+        document.getElementById(metricId+'-percent').textContent=percent+'%';
+      }
+    }
+    return data;
+  }catch(e){console.error('Fehler beim Laden von '+name+'.csv',e); return [];}
+}
+
+/* CHARTS */
+let chartFunnel, chartTrend;
+function initCharts(pipelineData=[], placementsData=[]){
+  // Funnel chart - Pipeline Stages
+  const stageCounts={Prospect:0, Contacted:0, Qualified:0, Meeting:0, Proposal:0, Negotiation:0, Deal:0};
+  pipelineData.forEach(d=>{if(stageCounts[d.Stage]!==undefined) stageCounts[d.Stage]++;});
+  const ctxF=document.getElementById('chart-funnel').getContext('2d');
+  if(chartFunnel) chartFunnel.destroy();
+  chartFunnel=new Chart(ctxF,{
+    type:'bar',
+    data:{labels:Object.keys(stageCounts), datasets:[{label:'Candidates per Stage', data:Object.values(stageCounts),
+      backgroundColor:['#3b82f6','#f59e0b','#6366f1','#10b981','#8b5cf6','#f43f5e','#14b8a6']}]
+    },
+    options:{indexAxis:'y', responsive:true, plugins:{legend:{display:false}}}
+  });
+
+  // Trend chart - Placements over time
+  const trendLabels=[], trendValues=[];
+  const counts={};
+  placementsData.forEach(p=>{const d=p['Start Date']||p['Date']||'unknown'; counts[d]=(counts[d]||0)+1;});
+  Object.keys(counts).sort().forEach(d=>{trendLabels.push(d); trendValues.push(counts[d]);});
+  const ctxT=document.getElementById('chart-trend').getContext('2d');
+  if(chartTrend) chartTrend.destroy();
+  chartTrend=new Chart(ctxT,{
+    type:'line',
+    data:{labels:trendLabels,datasets:[{label:'Placements',data:trendValues,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.2)',fill:true}]},
+    options:{responsive:true, plugins:{legend:{display:true}}}
+  });
+}
+
+/* INIT DASHBOARD */
+async function initDashboard(){
+  document.getElementById('lastUpdate').textContent=new Date().toLocaleString('de-DE');
+  const pipelineData=await loadCSV('Pipeline','pipeline-tbody','metric-pipeline');
+  const candidatesData=await loadCSV('Candidates','candidates-tbody','metric-ready-candidates');
+  await loadCSV('Employers','employers-tbody');
+  const placementsData=await loadCSV('Placements','placements-tbody','metric-placements','metric-placements-bar',10);
+  await loadCSV('Risk','risk-tbody');
+  await loadCSV('Market','market-tbody');
+  await loadCSV('Training','training-tbody');
+  initCharts(pipelineData, placementsData);
+}
+
+initDashboard();
+</script>
+
 </body>
 </html>
