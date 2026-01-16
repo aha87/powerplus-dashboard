@@ -1,165 +1,508 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PowerPlus Dashboard - Ultimate Edition</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-    .metric-card { transition: all 0.3s ease; }
-    .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
-    .filter-btn { transition: all 0.2s; cursor: pointer; }
-    .filter-btn.active { background: #6366f1; color: white; }
-    .badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
-    .badge-green { background: #d1fae5; color: #065f46; }
-    .badge-yellow { background: #fef3c7; color: #92400e; }
-    .badge-blue { background: #dbeafe; color: #1d4ed8; }
-    .badge-red { background: #fee2e2; color: #991b1b; }
-    .badge-purple { background: #ede9fe; color: #5b21b6; }
-    
-    .progress-bar { height: 8px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; width: 120px; }
-    .progress-fill { height: 100%; background: linear-gradient(to right, #10b981, #34d399); transition: width 0.5s ease-in-out; }
-    
-    .trust-score { padding: 4px 12px; border-radius: 9999px; font-weight: 600; display: inline-block; }
-    .trust-1 { background: #fee2e2; color: #991b1b; }
-    .trust-2 { background: #fed7aa; color: #9a3412; }
-    .trust-3 { background: #fef3c7; color: #92400e; }
-    .trust-4 { background: #d1fae5; color: #065f46; }
-    .trust-5 { background: #a7f3d0; color: #064e3b; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerPlus Dashboard - Ultimate Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <style>
+        .metric-card { transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+        .filter-btn { transition: all 0.2s; cursor: pointer; }
+        .filter-btn.active { background: #6366f1; color: white; }
+        .badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-blue { background: #dbeafe; color: #1d4ed8; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-purple { background: #ede9fe; color: #5b21b6; }
+        
+        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; width: 120px; }
+        .progress-fill { height: 100%; background: linear-gradient(to right, #10b981, #34d399); transition: width 0.5s ease-in-out; }
+        
+        .trust-score { padding: 4px 12px; border-radius: 9999px; font-weight: 600; display: inline-block; }
+        .trust-1 { background: #fee2e2; color: #991b1b; }
+        .trust-2 { background: #fed7aa; color: #9a3412; }
+        .trust-3 { background: #fef3c7; color: #92400e; }
+        .trust-4 { background: #d1fae5; color: #065f46; }
+        .trust-5 { background: #a7f3d0; color: #064e3b; }
+        
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { background: #f3f4f6; }
+        .sort-arrow { display: inline-block; margin-left: 4px; opacity: 0.3; }
+        .sortable.asc .sort-arrow { opacity: 1; transform: rotate(0deg); }
+        .sortable.desc .sort-arrow { opacity: 1; transform: rotate(180deg); }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; padding: 1rem; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 1rem; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+        
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; margin-top: 0.5rem; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #6366f1; }
+        textarea { min-height: 80px; }
+        
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(99,102,241,0.3); }
+        .btn-secondary { background: #f3f4f6; color: #374151; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
+        .btn-secondary:hover { background: #e5e7eb; }
+        .btn-danger { background: #ef4444; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-edit { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; }
+        .btn-edit:hover { background: #2563eb; }
+        .btn-success { background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
+        .btn-success:hover { background: #059669; }
+        
+        .action-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        
+        .column-list { max-height: 300px; overflow-y: auto; }
+        .column-item { 
+            padding: 0.75rem; 
+            border: 1px solid #e5e7eb; 
+            border-radius: 0.5rem; 
+            margin-bottom: 0.5rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: move; 
+            background: #f9fafb;
+        }
+        .column-item.dragging { opacity: 0.5; background: #e5e7eb; }
 
-    .pipeline-prospect { background: #dbeafe; color: #1d4ed8; }
-    .pipeline-contacted { background: #ede9fe; color: #5b21b6; }
-    .pipeline-qualified { background: #fef3c7; color: #92400e; }
-    .pipeline-meeting { background: #fef9c3; color: #78350f; }
-    .pipeline-proposal { background: #d1fae5; color: #065f46; }
-    .pipeline-negotiation { background: #a7f3d0; color: #064e3b; }
-    .pipeline-deal { background: #4ade80; color: #064e3b; }
-
-    .sortable { cursor: pointer; user-select: none; }
-    .sortable:hover { background: #f3f4f6; }
-    .sort-arrow { display: inline-block; margin-left: 4px; opacity: 0.3; }
-    .sortable.asc .sort-arrow { opacity: 1; transform: rotate(0deg); }
-    .sortable.desc .sort-arrow { opacity: 1; transform: rotate(180deg); }
-</style>
+        /* Stage Farben */
+        .stage-prospect    { background: #9CA3AF; color: white; }
+        .stage-contacted   { background: #60A5FA; color: white; }
+        .stage-qualified   { background: #2563EB; color: white; }
+        .stage-meeting     { background: #7C3AED; color: white; }
+        .stage-proposal    { background: #F59E0B; color: white; }
+        .stage-negotiation { background: #EF4444; color: white; }
+        .stage-dealwon     { background: #10B981; color: white; }
+    </style>
 </head>
 <body class="bg-gray-50">
 
-<div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6 px-8 shadow-lg">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div>
-            <h1 class="text-3xl font-bold">PowerPlus Dashboard</h1>
-            <p class="text-indigo-200 mt-1">German Market Director - Ultimate Edition</p>
-        </div>
-        <div class="text-right">
-            <p class="text-sm text-indigo-200">Last Update</p>
-            <p class="text-lg font-semibold" id="lastUpdate">-</p>
-        </div>
-    </div>
-</div>
-
-<div class="bg-white shadow-md sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-8">
-        <div class="flex gap-1 overflow-x-auto py-2">
-            <button onclick="switchTab('overview')" id="tab-overview" class="filter-btn active px-6 py-3 rounded-lg font-semibold whitespace-nowrap">📊 Overview</button>
-            <button onclick="switchTab('pipeline')" id="tab-pipeline" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🎯 Pipeline</button>
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6 px-8 shadow-lg">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold">PowerPlus Dashboard</h1>
+                <p class="text-indigo-200 mt-1">German Market Director - Ultimate Edition</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-indigo-200">Last Update</p>
+                <p class="text-lg font-semibold" id="lastUpdate">-</p>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="max-w-7xl mx-auto px-8 py-6">
-    <!-- OVERVIEW TAB -->
-    <div id="content-overview" class="tab-content">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <p class="text-sm text-gray-600">Active Pipeline</p>
-                        <p class="text-3xl font-bold text-blue-600" id="metric-pipeline">0</p>
+    <!-- Tab Navigation -->
+    <div class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-8">
+            <div class="flex gap-1 overflow-x-auto py-2">
+                <button onclick="switchTab('overview')" id="tab-overview" class="filter-btn active px-6 py-3 rounded-lg font-semibold whitespace-nowrap">📊 Overview</button>
+                <button onclick="switchTab('pipeline')" id="tab-pipeline" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🎯 Pipeline</button>
+                <button onclick="switchTab('candidates')" id="tab-candidates" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">⭐ Candidates</button>
+                <button onclick="switchTab('employers')" id="tab-employers" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🤝 Employers</button>
+                <button onclick="switchTab('placements')" id="tab-placements" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">✅ Placements</button>
+                <button onclick="switchTab('risk')" id="tab-risk" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🛡️ Risk</button>
+                <button onclick="switchTab('market')" id="tab-market" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🗺️ Market</button>
+                <button onclick="switchTab('training')" id="tab-training" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">📚 Training</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-8 py-6">
+        
+        <!-- OVERVIEW TAB -->
+        <div id="content-overview" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Placements This Month</p>
+                            <p class="text-3xl font-bold text-indigo-600" id="metric-placements-month">0</p>
+                        </div>
+                        <div class="bg-indigo-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-sm">
+                        <span class="text-gray-600">Target: 10/month</span>
+                    </div>
+                    <div class="mt-3">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="metric-placements-bar" class="bg-indigo-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Active Pipeline</p>
+                            <p class="text-3xl font-bold text-blue-600" id="metric-pipeline">0</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Ready Candidates</p>
+                            <p class="text-3xl font-bold text-green-600" id="metric-candidates">0</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">High Risk Items</p>
+                            <p class="text-3xl font-bold text-red-600" id="metric-risk">0</p>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- PIPELINE TAB -->
-    <div id="content-pipeline" class="tab-content hidden">
-        <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <h2 class="text-2xl font-bold text-gray-800">Sales Pipeline</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full" id="pipeline-table">
-                    <thead id="pipeline-thead"></thead>
-                    <tbody id="pipeline-tbody"></tbody>
-                </table>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Placements Last 6 Months</h3>
+                    <canvas id="placementsMonthChart" height="250"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Pipeline by Stage</h3>
+                    <canvas id="pipelineChart" height="250"></canvas>
+                </div>
             </div>
         </div>
-    </div>
-</div>
 
-<script>
-let allData = {};
+        <!-- PIPELINE TAB -->
+        <div id="content-pipeline" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Sales Pipeline</h2>
+                    <div class="action-bar">
+                        <div class="flex gap-2">
+                            <button onclick="filterPipeline('all')" id="filter-pipeline-all" class="filter-btn active px-4 py-2 rounded-lg text-sm font-semibold">All</button>
+                            <button onclick="filterPipeline('Pflege')" id="filter-pipeline-Pflege" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Pflege</button>
+                            <button onclick="filterPipeline('Handwerk')" id="filter-pipeline-Handwerk" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Handwerk</button>
+                            <button onclick="filterPipeline('Gastro')" id="filter-pipeline-Gastro" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100">Gastro</button>
+                        </div>
+                        <button onclick="manageColumns('pipeline')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('pipeline')" class="btn-primary">+ Add Lead</button>
+                        <button onclick="bulkEdit('pipeline')" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDelete('pipeline')" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="pipeline-table">
+                        <thead id="pipeline-thead"></thead>
+                        <tbody id="pipeline-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-const pipelineStages = ['Prospect','Contacted','Qualified','Meeting','Proposal','Negotiation','Deal Won'];
-const stageClasses = {
-    'Prospect':'pipeline-prospect',
-    'Contacted':'pipeline-contacted',
-    'Qualified':'pipeline-qualified',
-    'Meeting':'pipeline-meeting',
-    'Proposal':'pipeline-proposal',
-    'Negotiation':'pipeline-negotiation',
-    'Deal Won':'pipeline-deal'
-};
+        <!-- EMPLOYERS TAB -->
+        <div id="content-employers" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Employers</h2>
+                    <div class="action-bar">
+                        <button onclick="manageColumns('employers')" class="btn-success">⚙️ Manage Columns</button>
+                        <button onclick="openAddModal('employers')" class="btn-primary">+ Add Employer</button>
+                        <button onclick="bulkEdit('employers')" class="btn-edit">Edit Selected</button>
+                        <button onclick="bulkDelete('employers')" class="btn-danger">Delete Selected</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="employers-table">
+                        <thead id="employers-thead"></thead>
+                        <tbody id="employers-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-// Load CSVs
-async function loadCSV(file) {
-    const resp = await fetch(file);
-    const text = await resp.text();
-    const lines = text.split('\n').filter(l => l.trim()!=='');
-    const headers = lines[0].split(',');
-    return lines.slice(1).map(line=>{
-        const cols = line.split(',');
-        let obj={};
-        headers.forEach((h,i)=>obj[h.trim()]=cols[i]?.trim());
-        return obj;
-    });
-}
+        <!-- Weitere Tabs analog – hier nur exemplarisch Pipeline & Employers vollständig -->
 
-async function loadAll() {
-    allData.pipeline = await loadCSV('Pipeline.csv');
-    renderPipeline();
-    document.getElementById('metric-pipeline').textContent = allData.pipeline.length;
-    document.getElementById('lastUpdate').textContent = new Date().toLocaleString('de-DE');
-}
+        <!-- Column Management Modal -->
+        <div id="column-modal" class="modal">
+            <div class="modal-content">
+                <h2 class="text-2xl font-bold mb-4">Manage Columns</h2>
+                <p class="text-sm text-gray-600 mb-4">Spalten hinzufügen, entfernen oder Reihenfolge ändern für <span id="column-collection-name"></span></p>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold mb-2">Neue Spalte hinzufügen</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-column-name" placeholder="Spaltenname" class="flex-1">
+                        <button onclick="addColumn()" class="btn-primary">Hinzufügen</button>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold mb-2">Aktuelle Spalten (Drag & Drop zum Sortieren)</h3>
+                    <div id="column-list" class="column-list"></div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button onclick="saveColumnOrder()" class="btn-primary flex-1">Speichern & Schließen</button>
+                    <button onclick="closeColumnModal()" class="btn-secondary">Abbrechen</button>
+                </div>
+            </div>
+        </div>
 
-// Render pipeline table
-function renderPipeline() {
-    const thead = document.getElementById('pipeline-thead');
-    const tbody = document.getElementById('pipeline-tbody');
-    if(!allData.pipeline) return;
+        <!-- Edit / Add / Bulk Modal -->
+        <div id="edit-modal" class="modal">
+            <div class="modal-content">
+                <h2 id="modal-title" class="text-2xl font-bold mb-4">Bearbeiten</h2>
+                <form id="edit-form" onsubmit="saveItem(event)"></form>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" form="edit-form" class="btn-primary flex-1">Speichern</button>
+                    <button onclick="closeModal()" class="btn-secondary">Abbrechen</button>
+                </div>
+            </div>
+        </div>
 
-    const columns = Object.keys(allData.pipeline[0] || {});
-    thead.innerHTML = '<tr class="bg-gray-50 text-left"><th class="px-4 py-3">Stage</th>'+columns.map(c=>`<th class="px-4 py-3">${c}</th>`).join('')+'</tr>';
-    tbody.innerHTML = allData.pipeline.map(item=>{
-        const stage = item['Stage'] || 'Prospect';
-        const stageBadge = `<span class="badge ${stageClasses[stage] || 'badge-blue'}">${stage}</span>`;
-        return `<tr class="border-t hover:bg-gray-50"><td class="px-4 py-3">${stageBadge}</td>`+columns.map(c=>{
-            if(c==='Stage') return ''; 
-            return `<td class="px-4 py-3">${item[c]||''}</td>`;
-        }).join('')+'</tr>';
-    }).join('');
-}
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1WKOUlVF1YvBMolSVACHOXz2kGQ_a6Sc",
+            authDomain: "powerplus-dashboard.firebaseapp.com",
+            projectId: "powerplus-dashboard",
+            storageBucket: "powerplus-dashboard.firebasestorage.app",
+            messagingSenderId: "506858654374",
+            appId: "1:506858654374:web:06e47ff0cd5f8ae7808267",
+            measurementId: "G-H1BJQBB3KP"
+        };
 
-// Tab switching
-function switchTab(tab) {
-    document.querySelectorAll('.tab-content').forEach(t=>t.classList.add('hidden'));
-    document.getElementById('content-'+tab).classList.remove('hidden');
-    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-    document.getElementById('tab-'+tab).classList.add('active');
-}
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-loadAll();
-</script>
+        let currentCollection = '';
+        let currentDocId = '';
+        let allData = {};
+        let sortStates = {};
+        let filterStates = { pipeline: 'all', candidates: 'all' };
+        let selectedItems = { pipeline: [], candidates: [], employers: [], placements: [], risk: [], market: [], training: [] };
+        let chartsInitialized = false;
+
+        let columnConfig = {
+            pipeline: ['Company', 'Branch', 'Region', 'Stage', 'Priority', 'Next Action', 'Contact', 'Last Contacted'],
+            candidates: ['Name', 'Branch', 'German Level', 'Overall Score', 'Status', 'Training Progress'],
+            employers: ['Company', 'Branch', 'Trust Score', 'Phone', 'Current PowerPlus Workers', 'Notes'],
+            placements: ['Candidate', 'Company', 'Branch', 'Start Date', 'End Date', 'Status'],
+            risk: ['Item', 'Type', 'Risk Level', 'Status'],
+            market: ['Branch', 'Vacancy Rate', 'Regional Demand', 'Priority Score'],
+            training: ['Module', 'Type', 'Duration', 'Status']
+        };
+
+        const savedConfig = localStorage.getItem('columnConfig');
+        if (savedConfig) {
+            try {
+                columnConfig = JSON.parse(savedConfig);
+            } catch (e) {
+                console.error("Fehler beim Laden der Spaltenkonfiguration", e);
+            }
+        }
+
+        function saveColumnConfig() {
+            localStorage.setItem('columnConfig', JSON.stringify(columnConfig));
+        }
+
+        function loadAllCollections() {
+            const collections = ['pipeline', 'candidates', 'employers', 'placements', 'risk', 'market', 'training'];
+            collections.forEach(coll => {
+                db.collection(coll).onSnapshot(snapshot => {
+                    allData[coll] = [];
+                    snapshot.forEach(doc => {
+                        allData[coll].push({ id: doc.id, ...doc.data() });
+                    });
+                    renderTable(coll);
+                    updateMetrics();
+                    if (!chartsInitialized) {
+                        updateCharts();
+                        chartsInitialized = true;
+                    }
+                }, error => {
+                    console.error(`Fehler bei ${coll}:`, error);
+                });
+            });
+
+            setInterval(() => {
+                const el = document.getElementById('lastUpdate');
+                if (el) el.textContent = new Date().toLocaleString('de-DE');
+            }, 1000);
+        }
+
+        const stageColors = {
+            'Prospect': 'stage-prospect',
+            'Contacted': 'stage-contacted',
+            'Qualified': 'stage-qualified',
+            'Meeting': 'stage-meeting',
+            'Proposal': 'stage-proposal',
+            'Negotiation': 'stage-negotiation',
+            'Deal Won': 'stage-dealwon'
+        };
+
+        function renderTable(collection) {
+            const thead = document.getElementById(collection + '-thead');
+            const tbody = document.getElementById(collection + '-tbody');
+            if (!thead || !tbody) return;
+
+            const columns = columnConfig[collection] || [];
+            let data = allData[collection] || [];
+
+            if (filterStates[collection] && filterStates[collection] !== 'all') {
+                if (collection === 'pipeline') {
+                    data = data.filter(item => item.Branch === filterStates[collection]);
+                } else if (collection === 'candidates') {
+                    data = data.filter(item => item.Status === filterStates[collection]);
+                }
+            }
+
+            if (sortStates[collection]) {
+                const { field, direction } = sortStates[collection];
+                data = [...data].sort((a, b) => {
+                    let va = a[field] ?? '';
+                    let vb = b[field] ?? '';
+                    if (typeof va === 'number' && typeof vb === 'number') {
+                        return direction === 'asc' ? va - vb : vb - va;
+                    }
+                    va = String(va).toLowerCase();
+                    vb = String(vb).toLowerCase();
+                    return direction === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+                });
+            }
+
+            let header = '<tr class="bg-gray-50 text-left">';
+            header += '<th class="px-4 py-3"><input type="checkbox" onchange="selectAll(this.checked, \'' + collection + '\')"></th>';
+            columns.forEach(col => {
+                const sortClass = (sortStates[collection]?.field === col) ? sortStates[collection].direction : '';
+                header += `<th class="px-4 py-3 text-sm font-semibold text-gray-700 sortable ${sortClass}" onclick="sortTable('${collection}', '${col.replace(/'/g, "\\'")}')">${col}<span class="sort-arrow">▼</span></th>`;
+            });
+            header += '</tr>';
+            thead.innerHTML = header;
+
+            let body = '';
+            data.forEach(item => {
+                const selected = selectedItems[collection].includes(item.id);
+                body += `<tr class="border-t hover:bg-gray-50" onclick="toggleRowSelection(event, '${collection}', '${item.id}')">`;
+                body += `<td class="px-4 py-3"><input type="checkbox" ${selected ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${collection}', '${item.id}')"></td>`;
+
+                columns.forEach(col => {
+                    let val = item[col] ?? '-';
+                    if (col === 'Stage' && collection === 'pipeline') {
+                        const cls = stageColors[val] || 'bg-gray-200 text-gray-800';
+                        val = `<span class="px-3 py-1 rounded-full text-xs font-medium ${cls}">${val}</span>`;
+                    } else if (col === 'Trust Score' && collection === 'employers') {
+                        const score = Number(val) || 0;
+                        const cls = score >= 4.5 ? 'trust-5' : score >= 3.5 ? 'trust-4' : score >= 2.5 ? 'trust-3' : score >= 1.5 ? 'trust-2' : 'trust-1';
+                        val = `<span class="trust-score ${cls}">${score.toFixed(1)}</span>`;
+                    }
+                    body += `<td class="px-4 py-3 text-sm">${val}</td>`;
+                });
+                body += '</tr>';
+            });
+
+            if (data.length === 0) {
+                body = `<tr><td colspan="${columns.length + 1}" class="py-12 text-center text-gray-500">Keine Daten vorhanden</td></tr>`;
+            }
+            tbody.innerHTML = body;
+        }
+
+        // Weitere Funktionen (manageColumns, bulkEdit, saveItem usw.) folgen im nächsten Schritt – dieser Block ist bewusst kürzer gehalten, um Fehlerquellen zu minimieren.
+
+        // Initialisierung
+        window.onload = () => {
+            loadAllCollections();
+            switchTab('overview');
+        };
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-100');
+            });
+            const activeBtn = document.getElementById('tab-' + tabName);
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+                activeBtn.classList.remove('bg-gray-100');
+            }
+        }
+
+        function sortTable(collection, field) {
+            if (!sortStates[collection]) {
+                sortStates[collection] = { field, direction: 'asc' };
+            } else if (sortStates[collection].field === field) {
+                sortStates[collection].direction = sortStates[collection].direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortStates[collection] = { field, direction: 'asc' };
+            }
+            renderTable(collection);
+        }
+
+        function toggleItemSelection(collection, id) {
+            const list = selectedItems[collection];
+            const idx = list.indexOf(id);
+            if (idx > -1) list.splice(idx, 1);
+            else list.push(id);
+            renderTable(collection);
+        }
+
+        function toggleRowSelection(event, collection, id) {
+            if (event.target.type === 'checkbox') return;
+            toggleItemSelection(collection, id);
+        }
+
+        function selectAll(checked, collection) {
+            selectedItems[collection] = checked ? (allData[collection] || []).map(i => i.id) : [];
+            renderTable(collection);
+        }
+
+        function filterPipeline(value) {
+            filterStates.pipeline = value;
+            document.querySelectorAll('[id^="filter-pipeline-"]').forEach(btn => {
+                const isActive = btn.id === 'filter-pipeline-' + value;
+                btn.classList.toggle('active', isActive);
+                btn.classList.toggle('bg-indigo-600', isActive);
+                btn.classList.toggle('text-white', isActive);
+                btn.classList.toggle('bg-gray-100', !isActive);
+            });
+            renderTable('pipeline');
+        }
+
+        function updateMetrics() {
+            const placements = allData.placements || [];
+            document.getElementById('metric-pipeline').textContent = (allData.pipeline || []).length;
+            document.getElementById('metric-candidates').textContent = (allData.candidates || []).length;
+            // ... weitere Metriken bei Bedarf
+        }
+
+        function updateCharts() {
+            // Placeholder – Chart.js Initialisierung bei Bedarf wieder einfügen
+        }
+
+        // Bulk Edit, Add, Save etc. kommen in der nächsten vollständigen Version – erstmal Stabilität herstellen
+    </script>
 </body>
 </html>
