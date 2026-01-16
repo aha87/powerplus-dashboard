@@ -1,198 +1,287 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PowerPlus Dashboard - Ultimate Edition</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-<style>
-    .metric-card { transition: all 0.3s ease; }
-    .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
-    .filter-btn { transition: all 0.2s; cursor: pointer; }
-    .filter-btn.active { background: #6366f1; color: white; }
-    .badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
-    .badge-green { background: #d1fae5; color: #065f46; }
-    .badge-yellow { background: #fef3c7; color: #92400e; }
-    .badge-blue { background: #dbeafe; color: #1d4ed8; }
-    .badge-red { background: #fee2e2; color: #991b1b; }
-    .badge-purple { background: #ede9fe; color: #5b21b6; }
-    .stage-badge { padding: 2px 6px; border-radius: 0.375rem; color: white; font-weight: 600; display: inline-block; }
-    .stage-Prospect { background: #9CA3AF; }
-    .stage-Contacted { background: #60A5FA; }
-    .stage-Qualified { background: #2563EB; }
-    .stage-Meeting { background: #7C3AED; }
-    .stage-Proposal { background: #F59E0B; }
-    .stage-Negotiation { background: #EF4444; }
-    .stage-Deal\ Won { background: #10B981; }
-    .sortable { cursor: grab; user-select: none; }
-    .sortable:hover { background: #f3f4f6; }
-    .sort-arrow { display: inline-block; margin-left: 4px; opacity: 0.3; }
-    .sortable.asc .sort-arrow { opacity: 1; transform: rotate(0deg); }
-    .sortable.desc .sort-arrow { opacity: 1; transform: rotate(180deg); }
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; padding: 1rem; }
-    .modal.active { display: flex; }
-    .modal-content { background: white; border-radius: 1rem; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
-    input, select, textarea { width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; margin-top: 0.5rem; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #6366f1; }
-    textarea { min-height: 80px; }
-    .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(99,102,241,0.3); }
-    .btn-secondary { background: #f3f4f6; color: #374151; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
-    .btn-secondary:hover { background: #e5e7eb; }
-    .btn-danger { background: #ef4444; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
-    .btn-danger:hover { background: #dc2626; }
-    .btn-edit { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; }
-    .btn-edit:hover { background: #2563eb; }
-    .btn-success { background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; margin-left: 0.5rem; }
-    .btn-success:hover { background: #059669; }
-    .action-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .column-list { max-height: 300px; overflow-y: auto; }
-    .column-item { padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; cursor: grab; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerPlus Dashboard - Ultimate Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <style>
+        .metric-card { transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .filter-btn { transition: all 0.2s; cursor: pointer; }
+        .filter-btn.active { background: #6366f1 !important; color: white !important; }
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { background: #f3f4f6; }
+        .sortable.asc::after { content: ' ↑'; }
+        .sortable.desc::after { content: ' ↓'; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 1rem; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; margin-top: 0.5rem; box-sizing: border-box; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #6366f1; }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-edit { background: #3b82f6; color: white; }
+        .btn-edit:hover { background: #2563eb; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .stage-prospect    { background: #9CA3AF; color: white; }
+        .stage-contacted   { background: #60A5FA; color: white; }
+        .stage-qualified   { background: #2563EB; color: white; }
+        .stage-meeting     { background: #7C3AED; color: white; }
+        .stage-proposal    { background: #F59E0B; color: white; }
+        .stage-negotiation { background: #EF4444; color: white; }
+        .stage-dealwon     { background: #10B981; color: white; }
+    </style>
 </head>
-<body class="bg-gray-50">
-<!-- Header + Tabs + Content wie bisher … -->
+<body class="bg-gray-50 min-h-screen">
 
-<!-- Für die Umsetzung hier beschränke ich mich auf die wichtigsten JS-Funktionen, die Bulk Edit, Stage Farben, Drag & Drop und Deal Won abdecken -->
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6 px-8 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold">PowerPlus Dashboard</h1>
+                <p class="text-indigo-200 mt-1">German Market Director - Ultimate Edition</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-indigo-200">Last Update</p>
+                <p class="text-lg font-semibold" id="lastUpdate">-</p>
+            </div>
+        </div>
+    </div>
 
-<script>
-const stages = [
-    {name: 'Prospect', color: '#9CA3AF'},
-    {name: 'Contacted', color: '#60A5FA'},
-    {name: 'Qualified', color: '#2563EB'},
-    {name: 'Meeting', color: '#7C3AED'},
-    {name: 'Proposal', color: '#F59E0B'},
-    {name: 'Negotiation', color: '#EF4444'},
-    {name: 'Deal Won', color: '#10B981'}
-];
+    <!-- Tabs -->
+    <div class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-8">
+            <div class="flex gap-1 overflow-x-auto py-2">
+                <button onclick="switchTab('overview')" id="tab-overview" class="filter-btn active px-6 py-3 rounded-lg font-semibold whitespace-nowrap">📊 Overview</button>
+                <button onclick="switchTab('pipeline')" id="tab-pipeline" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🎯 Pipeline</button>
+                <button onclick="switchTab('employers')" id="tab-employers" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🤝 Employers</button>
+                <button onclick="switchTab('candidates')" id="tab-candidates" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">⭐ Candidates</button>
+                <button onclick="switchTab('placements')" id="tab-placements" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">✅ Placements</button>
+                <button onclick="switchTab('risk')" id="tab-risk" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🛡️ Risk</button>
+                <button onclick="switchTab('market')" id="tab-market" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🗺️ Market</button>
+                <button onclick="switchTab('training')" id="tab-training" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">📚 Training</button>
+            </div>
+        </div>
+    </div>
 
-let selectedPipelineItems = [];
-let columnConfig = JSON.parse(localStorage.getItem('columnConfig')) || {
-    pipeline: ['Company','Branch','Region','Stage','Priority','Azubi Bedarf','Phone','Last Contacted'],
-    employers: ['Company','Branch','Trust Score','Phone','Current PowerPlus Workers','Notes']
-};
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-8 py-6">
 
-// Render Pipeline table
-function renderPipeline() {
-    const tbody = document.getElementById('pipeline-tbody');
-    tbody.innerHTML = '';
-    allData.pipeline.forEach(item => {
-        const checked = selectedPipelineItems.includes(item.id) ? 'checked' : '';
-        let row = `<tr onclick="togglePipelineSelection('${item.id}')">
-        <td><input type="checkbox" ${checked} onclick="event.stopPropagation(); togglePipelineSelection('${item.id}')"></td>`;
-        columnConfig.pipeline.forEach(col => {
-            if(col === 'Stage'){
-                let options = stages.map(s => `<option value="${s.name}" ${item.Stage===s.name?'selected':''}>${s.name}</option>`).join('');
-                row += `<td><select onchange="updateStage('${item.id}', this.value)">${options}</select></td>`;
-            }else{
-                row += `<td>${item[col]||'-'}</td>`;
-            }
-        });
-        row += '</tr>';
-        tbody.innerHTML += row;
-    });
-}
+        <!-- Overview -->
+        <div id="content-overview" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow p-6 metric-card">
+                    <p class="text-sm text-gray-600">Active Pipeline</p>
+                    <p class="text-3xl font-bold text-blue-600 mt-1" id="metric-pipeline">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow p-6 metric-card">
+                    <p class="text-sm text-gray-600">Employers</p>
+                    <p class="text-3xl font-bold text-green-600 mt-1" id="metric-employers">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow p-6 metric-card">
+                    <p class="text-sm text-gray-600">Candidates</p>
+                    <p class="text-3xl font-bold text-indigo-600 mt-1" id="metric-candidates">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow p-6 metric-card">
+                    <p class="text-sm text-gray-600">Placements</p>
+                    <p class="text-3xl font-bold text-purple-600 mt-1" id="metric-placements">0</p>
+                </div>
+            </div>
+            <p class="text-center text-gray-500">Weitere Charts und Metriken folgen...</p>
+        </div>
 
-// Toggle selection
-function togglePipelineSelection(id){
-    const idx = selectedPipelineItems.indexOf(id);
-    if(idx>-1) selectedPipelineItems.splice(idx,1);
-    else selectedPipelineItems.push(id);
-}
+        <!-- Pipeline -->
+        <div id="content-pipeline" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Sales Pipeline</h2>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="filterPipeline('all')" id="filter-pipeline-all" class="filter-btn active px-4 py-2 rounded text-sm font-semibold bg-indigo-600 text-white">All</button>
+                        <button onclick="filterPipeline('Pflege')" id="filter-pipeline-Pflege" class="filter-btn px-4 py-2 rounded text-sm font-semibold bg-gray-100">Pflege</button>
+                        <button onclick="filterPipeline('Handwerk')" id="filter-pipeline-Handwerk" class="filter-btn px-4 py-2 rounded text-sm font-semibold bg-gray-100">Handwerk</button>
+                        <button onclick="filterPipeline('Gastro')" id="filter-pipeline-Gastro" class="filter-btn px-4 py-2 rounded text-sm font-semibold bg-gray-100">Gastro</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="pipeline-table">
+                        <thead id="pipeline-thead"></thead>
+                        <tbody id="pipeline-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-// Bulk Edit Stage
-function bulkEditPipeline(){
-    if(selectedPipelineItems.length===0) {alert('Select at least one item'); return;}
-    const newStage = prompt('Enter new Stage (Prospect, Contacted, Qualified, Meeting, Proposal, Negotiation, Deal Won)');
-    if(!stages.map(s=>s.name).includes(newStage)) {alert('Invalid Stage'); return;}
-    selectedPipelineItems.forEach(id=>{
-        const item = allData.pipeline.find(p=>p.id===id);
-        if(item){
-            item.Stage = newStage;
-            // Deal Won → move to Employers
-            if(newStage==='Deal Won'){
-                const emp = {
-                    id:'emp_'+Date.now(),
-                    Company:item.Company,
-                    Branch:item.Branch,
-                    'Trust Score':'',
-                    Phone:item.Phone,
-                    'Current PowerPlus Workers':'',
-                    Notes:''
-                };
-                allData.employers.push(emp);
-                renderEmployers();
-            }
+        <!-- Employers -->
+        <div id="content-employers" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Employers</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="employers-table">
+                        <thead id="employers-thead"></thead>
+                        <tbody id="employers-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Andere Tabs (Platzhalter) -->
+        <div id="content-candidates" class="tab-content hidden"><div class="bg-white rounded-xl shadow-lg p-6"><h2 class="text-2xl font-bold">Candidates</h2><p class="mt-4 text-gray-600">Keine Daten vorhanden oder noch nicht implementiert.</p></div></div>
+        <div id="content-placements" class="tab-content hidden"><div class="bg-white rounded-xl shadow-lg p-6"><h2 class="text-2xl font-bold">Placements</h2><p class="mt-4 text-gray-600">Keine Daten vorhanden oder noch nicht implementiert.</p></div></div>
+        <div id="content-risk" class="tab-content hidden"><div class="bg-white rounded-xl shadow-lg p-6"><h2 class="text-2xl font-bold">Risk</h2><p class="mt-4 text-gray-600">Keine Daten vorhanden oder noch nicht implementiert.</p></div></div>
+        <div id="content-market" class="tab-content hidden"><div class="bg-white rounded-xl shadow-lg p-6"><h2 class="text-2xl font-bold">Market</h2><p class="mt-4 text-gray-600">Keine Daten vorhanden oder noch nicht implementiert.</p></div></div>
+        <div id="content-training" class="tab-content hidden"><div class="bg-white rounded-xl shadow-lg p-6"><h2 class="text-2xl font-bold">Training</h2><p class="mt-4 text-gray-600">Keine Daten vorhanden oder noch nicht implementiert.</p></div></div>
+
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1WKOUlVF1YvBMolSVACHOXz2kGQ_a6Sc",
+            authDomain: "powerplus-dashboard.firebaseapp.com",
+            projectId: "powerplus-dashboard",
+            storageBucket: "powerplus-dashboard.firebasestorage.app",
+            messagingSenderId: "506858654374",
+            appId: "1:506858654374:web:06e47ff0cd5f8ae7808267",
+            measurementId: "G-H1BJQBB3KP"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let dataCache = {};
+        let filterPipelineBranch = 'all';
+
+        const stageClasses = {
+            'Prospect': 'stage-prospect',
+            'Contacted': 'stage-contacted',
+            'Qualified': 'stage-qualified',
+            'Meeting': 'stage-meeting',
+            'Proposal': 'stage-proposal',
+            'Negotiation': 'stage-negotiation',
+            'Deal Won': 'stage-dealwon'
+        };
+
+        function loadCollection(collectionName) {
+            db.collection(collectionName).onSnapshot(snapshot => {
+                dataCache[collectionName] = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                if (collectionName === 'pipeline') renderPipeline();
+                if (collectionName === 'employers') renderEmployers();
+                updateMetrics();
+            }, err => {
+                console.error(`Error loading ${collectionName}:`, err);
+            });
         }
-    });
-    renderPipeline();
-}
 
-// Update Stage from dropdown
-function updateStage(id,value){
-    const item = allData.pipeline.find(p=>p.id===id);
-    if(item){
-        item.Stage = value;
-        if(value==='Deal Won'){
-            const emp = {
-                id:'emp_'+Date.now(),
-                Company:item.Company,
-                Branch:item.Branch,
-                'Trust Score':'',
-                Phone:item.Phone,
-                'Current PowerPlus Workers':'',
-                Notes:''
-            };
-            allData.employers.push(emp);
-            renderEmployers();
+        function updateMetrics() {
+            document.getElementById('metric-pipeline').textContent = (dataCache.pipeline || []).length;
+            document.getElementById('metric-employers').textContent = (dataCache.employers || []).length;
+            document.getElementById('metric-candidates').textContent = (dataCache.candidates || []).length || 0;
+            document.getElementById('metric-placements').textContent = (dataCache.placements || []).length || 0;
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString('de-DE');
         }
-    }
-    renderPipeline();
-}
 
-// Drag & Drop Columns
-function initColumnDrag(){
-    const list = document.getElementById('column-list');
-    let dragSrcEl = null;
-    list.querySelectorAll('.column-item').forEach(item=>{
-        item.setAttribute('draggable','true');
-        item.addEventListener('dragstart', e=>{dragSrcEl=item;e.dataTransfer.effectAllowed='move';});
-        item.addEventListener('dragover', e=>{e.preventDefault();});
-        item.addEventListener('drop', e=>{
-            e.preventDefault();
-            if(dragSrcEl!==item){
-                const from = Array.from(list.children).indexOf(dragSrcEl);
-                const to = Array.from(list.children).indexOf(item);
-                const arr = columnConfig['pipeline'];
-                const moved = arr.splice(from,1)[0];
-                arr.splice(to,0,moved);
-                saveColumnsConfig();
-                renderPipeline();
-                renderColumnList('pipeline');
+        function renderPipeline() {
+            const thead = document.getElementById('pipeline-thead');
+            const tbody = document.getElementById('pipeline-tbody');
+
+            thead.innerHTML = `
+                <tr class="bg-gray-50 text-left border-b">
+                    <th class="px-6 py-4 font-semibold">Company</th>
+                    <th class="px-6 py-4 font-semibold">Branch</th>
+                    <th class="px-6 py-4 font-semibold">Stage</th>
+                </tr>
+            `;
+
+            let rows = '';
+            let items = dataCache.pipeline || [];
+            if (filterPipelineBranch !== 'all') {
+                items = items.filter(i => i.Branch === filterPipelineBranch);
             }
-        });
-    });
-}
-function saveColumnsConfig(){localStorage.setItem('columnConfig',JSON.stringify(columnConfig));}
 
-// Dummy renderEmployers für Vollständigkeit
-function renderEmployers(){
-    const tbody = document.getElementById('employers-tbody');
-    tbody.innerHTML='';
-    allData.employers.forEach(emp=>{
-        let row=`<tr>`;
-        columnConfig.employers.forEach(col=>{row+=`<td>${emp[col]||'-'}</td>`});
-        row+='</tr>';tbody.innerHTML+=row;
-    });
-}
+            if (items.length === 0) {
+                rows = '<tr><td colspan="3" class="text-center py-12 text-gray-500">Keine Einträge</td></tr>';
+            } else {
+                items.forEach(item => {
+                    const stageCls = stageClasses[item.Stage] || 'bg-gray-200 text-gray-800';
+                    const stage = item.Stage ? `<span class="${stageCls} px-3 py-1 rounded-full text-sm font-medium">${item.Stage}</span>` : '-';
+                    rows += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="px-6 py-4">${item.Company || '-'}</td>
+                            <td class="px-6 py-4">${item.Branch || '-'}</td>
+                            <td class="px-6 py-4">${stage}</td>
+                        </tr>
+                    `;
+                });
+            }
+            tbody.innerHTML = rows;
+        }
 
-// Beispiel: allData initial
-let allData={pipeline:[{id:'1',Company:'Firma A',Branch:'Pflege',Region:'Nord',Stage:'Prospect',Priority:'High','Azubi Bedarf':2,Phone:'012345','Last Contacted':'2026-01-01'}],employers:[]};
-renderPipeline();
-renderEmployers();
-</script>
+        function renderEmployers() {
+            const thead = document.getElementById('employers-thead');
+            const tbody = document.getElementById('employers-tbody');
+
+            thead.innerHTML = `
+                <tr class="bg-gray-50 text-left border-b">
+                    <th class="px-6 py-4 font-semibold">Company</th>
+                    <th class="px-6 py-4 font-semibold">Branch</th>
+                    <th class="px-6 py-4 font-semibold">Phone</th>
+                </tr>
+            `;
+
+            let rows = '';
+            (dataCache.employers || []).forEach(item => {
+                rows += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="px-6 py-4">${item.Company || '-'}</td>
+                        <td class="px-6 py-4">${item.Branch || '-'}</td>
+                        <td class="px-6 py-4">${item.Phone || '-'}</td>
+                    </tr>
+                `;
+            });
+            if (rows === '') rows = '<tr><td colspan="3" class="text-center py-12 text-gray-500">Keine Einträge</td></tr>';
+            tbody.innerHTML = rows;
+        }
+
+        function filterPipeline(branch) {
+            filterPipelineBranch = branch;
+            ['all', 'Pflege', 'Handwerk', 'Gastro'].forEach(b => {
+                const btn = document.getElementById(`filter-pipeline-${b}`);
+                if (btn) {
+                    const active = b === branch;
+                    btn.classList.toggle('active', active);
+                    btn.classList.toggle('bg-indigo-600', active);
+                    btn.classList.toggle('text-white', active);
+                    btn.classList.toggle('bg-gray-100', !active);
+                }
+            });
+            renderPipeline();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById('content-' + tab).classList.remove('hidden');
+
+            document.querySelectorAll('[id^="tab-"]').forEach(b => {
+                b.classList.remove('active', 'bg-indigo-600', 'text-white');
+                b.classList.add('bg-gray-100');
+            });
+            document.getElementById('tab-' + tab).classList.add('active', 'bg-indigo-600', 'text-white');
+            document.getElementById('tab-' + tab).classList.remove('bg-gray-100');
+        }
+
+        // Init
+        window.onload = () => {
+            ['pipeline', 'employers', 'candidates', 'placements', 'risk', 'market', 'training'].forEach(loadCollection);
+            switchTab('pipeline');
+            updateMetrics();
+        };
+    </script>
 </body>
 </html>
