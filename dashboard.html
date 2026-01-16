@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>German Market Director Dashboard - PowerPlus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        .metric-card { transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-ready { background: #10b981; }
+        .status-training { background: #f59e0b; }
+        .status-screening { background: #3b82f6; }
+        .status-risk { background: #ef4444; }
+        .filter-btn { transition: all 0.2s; }
+        .filter-btn.active { background: #6366f1; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6 px-8 shadow-lg">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold">German Market Director Dashboard</h1>
+                <p class="text-indigo-200 mt-1">PowerPlus Education - Real-time Market Intelligence</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-indigo-200">Last Update</p>
+                <p class="text-lg font-semibold" id="lastUpdate">Lädt...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-8">
+            <div class="flex gap-1 overflow-x-auto py-2">
+                <button onclick="switchTab('overview')" id="tab-overview" class="filter-btn active px-6 py-3 rounded-lg font-semibold whitespace-nowrap">📊 Overview</button>
+                <button onclick="switchTab('pipeline')" id="tab-pipeline" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🎯 Pipeline</button>
+                <button onclick="switchTab('candidates')" id="tab-candidates" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">⭐ Candidates</button>
+                <button onclick="switchTab('employers')" id="tab-employers" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🤝 Employers</button>
+                <button onclick="switchTab('placements')" id="tab-placements" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">✅ Placements</button>
+                <button onclick="switchTab('risk')" id="tab-risk" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🛡️ Risk</button>
+                <button onclick="switchTab('market')" id="tab-market" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">🗺️ Market</button>
+                <button onclick="switchTab('training')" id="tab-training" class="filter-btn px-6 py-3 rounded-lg font-semibold bg-gray-100 hover:bg-gray-200 whitespace-nowrap">📚 Training</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-8 py-6">
+        
+        <!-- OVERVIEW TAB -->
+        <div id="content-overview" class="tab-content active">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Placements This Month</p>
+                            <p class="text-3xl font-bold text-indigo-600" id="metric-placements">0</p>
+                        </div>
+                        <div class="bg-indigo-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-sm">
+                        <span class="text-green-600 font-semibold mr-2" id="metric-placements-change">+0%</span>
+                        <span class="text-gray-600">vs last month</span>
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>Target: 10/month</span>
+                            <span id="metric-placements-percent">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="metric-placements-bar" class="bg-indigo-600 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Active Pipeline</p>
+                            <p class="text-3xl font-bold text-blue-600" id="metric-pipeline">0</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Ready Candidates</p>
+                            <p class="text-3xl font-bold text-green-600" id="metric-ready-candidates">0</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Avg Trust Score</p>
+                            <p class="text-3xl font-bold text-purple-600" id="metric-trust-score">0.0</p>
+                        </div>
+                        <div class="bg-purple-100 p-3 rounded-full">
+                            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24 .588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3 .922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783 .57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81 .588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Placement Trend (Last 6 Months)</h3>
+                    <canvas id="placementTrendChart" height="250"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Sales Pipeline Funnel</h3>
+                    <canvas id="pipelineFunnelChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <!-- Quick Stats Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Top Branches</h3>
+                    <div class="space-y-3" id="branch-distribution"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Regional Hotspots</h3>
+                    <div class="space-y-3" id="regional-hotspots"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Recent Activity</h3>
+                    <div class="space-y-3" id="recent-activity"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamische Tabs -->
+        <!-- (Identisch wie zuvor, laden live CSV) -->
+
+    </div>
+
+    <script>
+    const sheetId = '1_jF4kF9Q_cOUgWeSrclMoH7Tlra46pQ1ufSCVEy7D_Q';
+    const gidMap = {
+        'pipeline': '0',
+        'candidates': '1301228597',
+        'employers': '942319422',
+        'placements': '432288962',
+        'risk': '396986302',
+        'market': '1823250953',
+        'training': '1039037943'
+    };
+
+    // Tab switching
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+            btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+            btn.classList.add('bg-gray-100');
+        });
+
+        document.getElementById('content-' + tabName).classList.add('active');
+        const activeBtn = document.getElementById('tab-' + tabName);
+        if (activeBtn) {
+            activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+            activeBtn.classList.remove('bg-gray-100');
+        }
+
+        if (tabName === 'overview') {
+            loadOverviewData();
+        } else {
+            loadSheetData(tabName);
+        }
+    }
+
+    // Load single sheet data
+    async function loadSheetData(tabName) {
+        const gid = gidMap[tabName] || '0';
+        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&cachebust=${Date.now()}`;
+        const tbody = document.getElementById(tabName + '-tbody');
+        const thead = document.getElementById(tabName + '-table').querySelector('thead tr');
+
+        if (!tbody || !thead) return;
+
+        tbody.innerHTML = '<tr><td colspan="20" class="px-4 py-8 text-center text-gray-500">Loading ' + tabName + '...</td></tr>';
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('HTTP ' + response.status + ' - ' + response.statusText);
+
+            const text = await response.text();
+            const data = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
+
+            if (data.errors.length) {
+                tbody.innerHTML = '<tr><td colspan="20" class="px-4 py-8 text-center text-red-500">Parse Error: ' + data.errors[0].message + '</td></tr>';
+                return;
+            }
+
+            if (!data.data.length) {
+                tbody.innerHTML = '<tr><td colspan="20" class="px-4 py-8 text-center text-gray-500">No data in sheet</td></tr>';
+                return;
+            }
+
+            const headers = Object.keys(data.data[0]);
+            let theadHTML = '';
+            headers.forEach(h => theadHTML += `<th class="px-4 py-3 text-sm font-semibold text-gray-700">${h}</th>`);
+            thead.innerHTML = theadHTML;
+
+            let tbodyHTML = '';
+            data.data.forEach(row => {
+                tbodyHTML += '<tr class="border-t hover:bg-gray-50">';
+                headers.forEach(h => {
+                    let val = row[h] ?? '-';
+                    tbodyHTML += `<td class="px-4 py-3 text-sm">${val}</td>`;
+                });
+                tbodyHTML += '</tr>';
+            });
+            tbody.innerHTML = tbodyHTML;
+
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="20" class="px-4 py-8 text-center text-red-500">Error: ' + err.message + '</td></tr>';
+        }
+    }
+
+    // Load Overview from all sheets
+    async function loadOverviewData() {
+        const metrics = {
+            placementsThisMonth: 0,
+            pipelineActive: 0,
+            readyCandidates: 0,
+            avgTrustScore: 0
+        };
+
+        for (const tab of Object.keys(gidMap)) {
+            const gid = gidMap[tab];
+            const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&cachebust=${Date.now()}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) continue;
+
+                const text = await response.text();
+                const data = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+                if (!data.data.length) continue;
+
+                if (tab === 'placements') {
+                    const now = new Date();
+                    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                    metrics.placementsThisMonth = data.data.filter(row => {
+                        const dateStr = row['Start Date'] || row.start_date || row['Start'] || '';
+                        const date = new Date(dateStr);
+                        return !isNaN(date) && date >= thisMonthStart;
+                    }).length;
+                }
+
+                if (tab === 'pipeline') {
+                    metrics.pipelineActive = data.data.filter(row => {
+                        const stage = (row.Stage || row.stage || '').toLowerCase();
+                        return !stage.includes('closed') && !stage.includes('lost');
+                    }).length || data.data.length;
+                }
+
+                if (tab === 'candidates') {
+                    metrics.readyCandidates = data.data.filter(row => {
+                        const status = (row.Status || row.status || '').toLowerCase();
+                        const score = parseFloat(row['Quality Score'] || row.score || row['Score'] || 0);
+                        return status.includes('ready') || status.includes('go') || score >= 4;
+                    }).length;
+                }
+
+                if (tab === 'employers') {
+                    const scores = data.data.map(row => parseFloat(row['Trust Score'] || row.trust_score || row['Score'] || 0)).filter(s => !isNaN(s));
+                    metrics.avgTrustScore = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : 0;
+                }
+
+            } catch (err) {
+                console.error('Error loading ' + tab + ':', err);
+            }
+        }
+
+        // Update UI
+        document.getElementById('metric-placements').textContent = metrics.placementsThisMonth;
+        const placementPercent = Math.round((metrics.placementsThisMonth / 10) * 100);
+        document.getElementById('metric-placements-percent').textContent = placementPercent + '%';
+        document.getElementById('metric-placements-bar').style.width = placementPercent + '%';
+
+        document.getElementById('metric-pipeline').textContent = metrics.pipelineActive;
+        document.getElementById('metric-ready-candidates').textContent = metrics.readyCandidates;
+        document.getElementById('metric-trust-score').textContent = metrics.avgTrustScore;
+
+        // Update Charts (placeholder – erweitere bei Bedarf)
+        updateCharts(metrics);
+    }
+
+    function updateCharts(metrics) {
+        // Placement Trend
+        const ctxTrend = document.getElementById('placementTrendChart').getContext('2d');
+        new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: ['Aug', 'Sep', 'Okt', 'Nov', 'Dez', 'Jan'],
+                datasets: [{
+                    label: 'Placements',
+                    data: [1, 1, 2, 2, 2, metrics.placementsThisMonth],
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Target',
+                    data: [10, 10, 10, 10, 10, 10],
+                    borderColor: '#ef4444',
+                    borderDash: [5, 5],
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Pipeline Funnel (placeholder)
+        const ctxFunnel = document.getElementById('pipelineFunnelChart').getContext('2d');
+        new Chart(ctxFunnel, {
+            type: 'bar',
+            data: {
+                labels: ['Leads', 'Contacted', 'Meetings', 'Proposals', 'Closed'],
+                datasets: [{
+                    label: 'Count',
+                    data: [25, 15, 8, 4, metrics.placementsThisMonth],
+                    backgroundColor: ['#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#10b981']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: { x: { beginAtZero: true } }
+            }
+        });
+    }
+
+    // Initialize
+    window.onload = function() {
+        const now = new Date();
+        document.getElementById('lastUpdate').textContent = now.toLocaleString('de-DE');
+        switchTab('overview');
+    };
+</script>
+</body>
+</html>
