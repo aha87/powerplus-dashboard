@@ -176,7 +176,7 @@
                 <div class="bg-white rounded-xl shadow-lg p-6 metric-card">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <p class="text-sm text-gray-600">Ready Candidates</p>
+                            <p class="text-sm text-gray-600">Available Candidates</p>
                             <p class="text-3xl font-bold text-green-600" id="metric-candidates">0</p>
                             <div class="text-sm text-gray-500 mt-1" id="metric-candidates-details">—</div>
                         </div>
@@ -740,8 +740,8 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
             const pipelineDetailsEl = document.getElementById('metric-pipeline-details');
             if (pipelineDetailsEl) pipelineDetailsEl.innerHTML = `Leads: <b>${leads}</b> &nbsp; Meetings: <b>${meetings}</b> &nbsp; Proposals: <b>${proposals}</b>`;
 
-            const readyCount = (allData.candidates || []).filter(c => String((c.Status||'')).trim() === 'Ready').length;
-            document.getElementById('metric-candidates').textContent = readyCount;
+            const AvailableCount = (allData.candidates || []).filter(c => String((c.Status||'')).trim() === 'Available').length;
+            document.getElementById('metric-candidates').textContent = AvailableCount;
             // candidates breakdown
             const candStatuses = {};
             (allData.candidates || []).forEach(c => { const s = String(c.Status || 'Unknown').trim(); candStatuses[s] = (candStatuses[s]||0)+1; });
@@ -1410,7 +1410,7 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
                     const statusColors = {
                         'Start': '#9CA3AF',
                         'Training': '#F59E0B',
-                        'Ready': '#10B981',
+                        'Available': '#10B981',
                         'Placement': '#6366F1'
                     };
                     const selects = tbody.querySelectorAll('select.status-select');
