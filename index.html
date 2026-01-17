@@ -277,7 +277,7 @@
                         <div class="filters">
                             <div class="flex gap-2">
                                 <button onclick="filterCandidates('all')" id="filter-candidates-all" class="filter-btn active px-3 py-1 rounded-lg text-sm font-semibold">All</button>
-                                <button onclick="filterCandidates('Ready')" id="filter-candidates-Ready" class="filter-btn px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100">Ready</button>
+                                <button onclick="filterCandidates('Available')" id="filter-candidates-Available" class="filter-btn px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100">Available</button>
                                 <button onclick="filterCandidates('Training')" id="filter-candidates-Training" class="filter-btn px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100">Training</button>
                                 <button onclick="filterCandidates('Screening')" id="filter-candidates-Screening" class="filter-btn px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100">Screening</button>
                             </div>
@@ -746,7 +746,7 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
             const candStatuses = {};
             (allData.candidates || []).forEach(c => { const s = String(c.Status || 'Unknown').trim(); candStatuses[s] = (candStatuses[s]||0)+1; });
             const candDetailsEl = document.getElementById('metric-candidates-details');
-            if (candDetailsEl) candDetailsEl.innerHTML = `Screening: <b>${candStatuses['Screening']||0}</b> &nbsp; Training: <b>${candStatuses['Training']||0}</b> &nbsp; Ready: <b>${candStatuses['Ready']||0}</b>`;
+            if (candDetailsEl) candDetailsEl.innerHTML = `Screening: <b>${candStatuses['Screening']||0}</b> &nbsp; Training: <b>${candStatuses['Training']||0}</b> &nbsp; Available: <b>${candStatuses['Available']||0}</b>`;
 
             const riskCount = (allData.risk || []).filter(r => String((r['Risk Level']||'')).trim() === 'High').length;
             document.getElementById('metric-risk').textContent = riskCount;
@@ -1333,7 +1333,7 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
 
                     // Special rendering for certain columns
                     if (col === 'Status' && collection === 'candidates') {
-                    const opts = ['Screening', 'Training', 'Ready', 'Placement'];
+                    const opts = ['Screening', 'Training', 'Available', 'Placement'];
                     const current = value && opts.includes(value) ? value : opts[0]; // fallback auf Screening, falls ungültig
                     value = `<select class="status-select" data-id="${item.id}">` +
                     opts.map(o => `<option value="${o}" ${o === current ? 'selected' : ''}>${o}</option>`).join('') +
