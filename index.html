@@ -743,19 +743,13 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
             const readyCount = (allData.candidates || []).filter(c => String((c.Status||'')).trim() === 'Ready').length;
             document.getElementById('metric-candidates').textContent = readyCount;
             // candidates breakdown
-             const candidatesStatus = {};
-            (allData.pipeline || []).forEach(p => {
-                const stage = normalizeStage(safeGet(p, 'Status', 'status') || 'Unknown');
-                candidatesStatus[status] = (pcandidatesStatus[status] || 0) + 1;
-            });
-            const leads = candidatesStatus['Prospect'] || 0;
-            const meetings = candidatesStatus['Meeting'] || 0;
-            const proposals = candidatesStatus['Proposal'] || 0;
-            const candidatesDetailsEl = document.getElementById('metric-candidates-details');
-            if (candidatesDetailsEl) candidatesDetailsEl.innerHTML = `Leads: <b>${leads}</b> &nbsp; Meetings: <b>${meetings}</b> &nbsp; Proposals: <b>${proposals}</b>`;
+            const candStatuses = {};
+            (allData.candidates || []).forEach(c => { const s = String(c.Status || 'Unknown').trim(); candStatuses[s] = (candStatuses[s]||0)+1; });
+            const candDetailsEl = document.getElementById('metric-candidates-details');
+            if (candDetailsEl) candDetailsEl.innerHTML = `Screening: <b>${candStatuses['Screening']||0}</b> &nbsp; Training: <b>${candStatuses['Training']||0}</b> &nbsp; Ready: <b>${candStatuses['Ready']||0}</b>`;
 
-            const readyCount = (allData.candidates || []).filter(c => String((c.Status||'')).trim() === 'Ready').length;
-            document.getElementById('metric-candidates').textContent = readyCount;
+            const riskCount = (allData.risk || []).filter(r => String((r['Risk Level']||'')).trim() === 'High').length;
+            document.getElementById('metric-risk').textContent = riskCount;
             // employers metrics
             const employers = allData.employers || [];
             const activePartners = employers.length;
@@ -1339,8 +1333,11 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
 
                     // Special rendering for certain columns
                     if (col === 'Status' && collection === 'candidates') {
-                        const statusClass = value === 'Ready' ? 'green' : value === 'Training' ? 'yellow' : 'blue';
-                        value = `<span class="badge badge-${statusClass}">${value}</span>`;
+                    const opts = ['Screening', 'Training', 'Ready', 'Placement'];
+                    const current = value && opts.includes(value) ? value : opts[0]; // fallback auf Screening, falls ungültig
+                    value = `<select class="status-select" data-id="${item.id}">` +
+                    opts.map(o => `<option value="${o}" ${o === current ? 'selected' : ''}>${o}</option>`).join('') +
+                    `</select>`;
                     } else if (col === 'Training Progress') {
                         const progress = parseInt((value || '0').replace('%', '')) || 0;
                         value = `<div><div class="progress-bar"><div class="progress-fill" style="width: ${progress}%"></div></div><span class="text-xs text-gray-600">${progress}%</span></div>`;
@@ -1407,6 +1404,41 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
                 }
             } catch (err) { console.error(err); }
 
+             // STATUS DROPDOWN HANDLER (Candidates)
+            if (collection === 'candidates') {
+                setTimeout(() => {
+                    const statusColors = {
+                        'Start': '#9CA3AF',
+                        'Training': '#F59E0B',
+                        'Ready': '#10B981',
+                        'Placement': '#6366F1'
+                    };
+                    const selects = tbody.querySelectorAll('select.status-select');
+                    selects.forEach(s => {
+                        const setColor = (val) => { s.style.background = statusColors[val] || '#9CA3AF'; s.style.color = '#fff'; s.style.borderRadius = '6px'; s.style.padding = '6px'; };
+                        setColor(s.value);
+                        s.addEventListener('mousedown', e => { e.stopPropagation(); });
+                        s.addEventListener('click', e => { e.stopPropagation(); });
+                        s.addEventListener('change', async (e) => {
+                            e.stopPropagation();
+                            const newVal = e.target.value;
+                            setColor(newVal);
+                            const id = s.dataset.id;
+                            try {
+                                await db.collection('candidates').doc(id).update({ Status: newVal });
+                                if (newVal === 'Placement') {
+                                    const doc = await db.collection('candidates').doc(id).get();
+                                    if (doc.exists) openPlacementPromotionModal(id, doc.data());
+                                }
+                            } catch (err) {
+                                alert('Error: ' + err.message);
+                            }
+                        });
+                    });
+                }, 50);
+            }
+        
+
             // Attach inline editors for editable cells (except dropdown fields)
             try { attachInlineEditors(collection); } catch (e) { console.debug('attachInlineEditors failed', e); }
             // Attach row info handlers (popover) after editors attached
@@ -1440,6 +1472,7 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
                 }
             } catch (err) { console.debug('attachRowInfoHandlers failed', err); }
         }
+        
 
         function escapeHtml(str) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1816,7 +1849,33 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
                 alert('Error saving: ' + error.message);
             }
         }
+// Promotion flow für Candidates → Placements (Candidate bleibt erhalten)
+function openPlacementPromotionModal(candidateId, candidateData) {
+    isPromotion = true;                  // reuse der bestehenden Promotion-Flag (wird im Save-Handler ausgewertet)
+    promotionSourceId = candidateId;     // nur für Undo-Referenz
+    promotionSavedData = Object.assign({}, candidateData); // Kopie für potentielles Undo (nicht zwingend nötig, da nichts gelöscht wird)
 
+    currentCollection = 'placements';
+    currentDocId = '';
+    document.getElementById('modal-title').textContent = 'Create Placement from Candidate';
+
+    const columns = columnConfig.placements || ['Candidate', 'Company', 'Branch', 'Start Date', 'End Date', 'Status'];
+    const form = document.getElementById('edit-form');
+    form.innerHTML = columns.map(col => {
+        let pre = '';
+        if (col === 'Candidate') pre = candidateData.Candidate || ''; // Haupt-Prefill: Name des Candidates
+        if (col === 'Branch') pre = candidateData.Branch || '';
+        // weitere Prefills bei Bedarf hier ergänzen (z. B. German Level usw.)
+        return `
+            <label class="block mt-4">
+                <span class="text-sm font-semibold text-gray-700">${col}</span>
+                <input type="text" name="${col}" value="${escapeHtml(pre)}" placeholder="${col}">
+            </label>
+        `;
+    }).join('');
+
+    document.getElementById('edit-modal').classList.add('active');
+}
         // Make popover draggable and persist position
         (function makePopoverDraggable(){
             const pop = document.getElementById('row-popover');
@@ -1914,60 +1973,52 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
             promotionSourceId = '';
         }
 
-        // intercept form submit to handle promotion flows
-        document.getElementById('edit-form').addEventListener('submit', async function(e) {
-            if (!isPromotion) return; // handled by saveItem
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = {};
-            formData.forEach((v,k) => data[k]=v);
-            try {
-                const res = await db.collection('employers').add(data);
-                promotionCreatedEmployerId = res.id;
-                // delete the pipeline source but allow undo
-                if (promotionSourceId) {
-                    try {
-                        await db.collection('pipeline').doc(promotionSourceId).delete();
-                    } catch (delErr) {
-                        console.warn('Could not delete pipeline immediately', delErr);
-                    }
-                }
+// Intercept form submit to handle BOTH promotion flows
+document.getElementById('edit-form').addEventListener('submit', async function(e) {
+    if (!isPromotion) return; // normale Saves gehen an saveItem()
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {};
+    formData.forEach((v,k) => data[k]=v);
 
-                // show snackbar with undo
-                showSnackbar('Promoted to employer', 8000, async () => {
-                    // undo action: remove created employer and restore pipeline
-                    try {
-                        if (promotionCreatedEmployerId) await db.collection('employers').doc(promotionCreatedEmployerId).delete();
-                        if (promotionSourceId && promotionSavedData) {
-                            await db.collection('pipeline').doc(promotionSourceId).set(promotionSavedData);
-                        }
-                    } catch (undoErr) {
-                        console.error('Undo promotion failed', undoErr);
-                        alert('Undo failed: ' + (undoErr.message || undoErr));
-                    } finally {
-                        promotionCreatedEmployerId = null;
-                        promotionSavedData = null;
-                        promotionSourceId = '';
-                        isPromotion = false;
-                        closeModal();
-                        selectedItems.employers = [];
-                    }
-                });
+    try {
+        // Neuen Eintrag erstellen (employers oder placements)
+        const res = await db.collection(currentCollection).add(data);
+        const newId = res.id;
 
-                // finalize promotion state after timeout (if user doesn't undo)
-                promotionUndoTimeout = setTimeout(() => {
-                    promotionSavedData = null;
-                    promotionCreatedEmployerId = null;
+        // NUR bei Pipeline→Employer: altes Pipeline-Item löschen
+        if (currentCollection === 'employers' && promotionSourceId) {
+            await db.collection('pipeline').doc(promotionSourceId).delete();
+        }
+        // Bei Candidates→Placements: nichts löschen → Candidate bleibt
+
+        showSnackbar(
+            currentCollection === 'employers' ? 'Employer erstellt & Pipeline-Item entfernt' : 'Placement erstellt',
+            8000,
+            async () => {
+                try {
+                    await db.collection(currentCollection).doc(newId).delete();
+                    // Nur bei Pipeline-Promotion wiederherstellen
+                    if (currentCollection === 'employers' && promotionSourceId && promotionSavedData) {
+                        await db.collection('pipeline').doc(promotionSourceId).set(promotionSavedData);
+                    }
+                } catch (undoErr) {
+                    console.error('Undo failed', undoErr);
+                    alert('Undo fehlgeschlagen: ' + undoErr.message);
+                } finally {
                     promotionSourceId = '';
+                    promotionSavedData = null;
                     isPromotion = false;
-                }, 8500);
-
-                closeModal();
-                selectedItems.employers = [];
-            } catch (err) {
-                alert('Error promoting: ' + err.message);
+                }
             }
-        });
+        );
+
+        closeModal();
+        selectedItems[currentCollection] = [];
+    } catch (err) {
+        alert('Fehler beim Erstellen: ' + err.message);
+    }
+});
 
         function closeModal() {
             document.getElementById('edit-modal').classList.remove('active');
