@@ -743,13 +743,19 @@ console.log("=== FORCED pipeline columns ===", columnConfig.pipeline);
             const readyCount = (allData.candidates || []).filter(c => String((c.Status||'')).trim() === 'Ready').length;
             document.getElementById('metric-candidates').textContent = readyCount;
             // candidates breakdown
-            const candStatuses = {};
-            (allData.candidates || []).forEach(c => { const s = String(c.Status || 'Unknown').trim(); candStatuses[s] = (candStatuses[s]||0)+1; });
-            const candDetailsEl = document.getElementById('metric-candidates-details');
-            if (candDetailsEl) candDetailsEl.innerHTML = `Screening: <b>${candStatuses['Screening']||0}</b> &nbsp; Training: <b>${candStatuses['Training']||0}</b> &nbsp; Ready: <b>${candStatuses['Ready']||0}</b>`;
+             const candidatesStatus = {};
+            (allData.pipeline || []).forEach(p => {
+                const stage = normalizeStage(safeGet(p, 'Status', 'status') || 'Unknown');
+                candidatesStatus[status] = (pcandidatesStatus[status] || 0) + 1;
+            });
+            const leads = candidatesStatus['Prospect'] || 0;
+            const meetings = candidatesStatus['Meeting'] || 0;
+            const proposals = candidatesStatus['Proposal'] || 0;
+            const candidatesDetailsEl = document.getElementById('metric-candidates-details');
+            if (candidatesDetailsEl) candidatesDetailsEl.innerHTML = `Leads: <b>${leads}</b> &nbsp; Meetings: <b>${meetings}</b> &nbsp; Proposals: <b>${proposals}</b>`;
 
-            const riskCount = (allData.risk || []).filter(r => String((r['Risk Level']||'')).trim() === 'High').length;
-            document.getElementById('metric-risk').textContent = riskCount;
+            const readyCount = (allData.candidates || []).filter(c => String((c.Status||'')).trim() === 'Ready').length;
+            document.getElementById('metric-candidates').textContent = readyCount;
             // employers metrics
             const employers = allData.employers || [];
             const activePartners = employers.length;
